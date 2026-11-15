@@ -1,0 +1,161 @@
+:root {
+  /* Fonts */
+  --font-sans: "Google Sans", "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Google Sans Code", "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  /* Neutrals — Antigravity 2.0 App Light Chrome */
+  --bg-canvas: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f5f5f5;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-pressed: rgba(0, 0, 0, 0.08);
+  --bg-scrim: rgba(0, 0, 0, 0.08);
+
+  --border-panel: #e0e0e0;
+  --border-card: #e6e6e6;
+  --border-subtle: #f0f0f0;
+  --border-divider: #dadce0;
+
+  --text-strong: #0a0a0c;
+  --text-standard: #3f3f46;
+  --text-muted: #71717a;
+  --text-section: #828283;
+  --text-time: #6c6c6d;
+  --text-faint: #bbbbbf;
+  --text-code: #3e5270;
+
+  /* Primary Action (Monochrome Black) */
+  --btn-primary-bg: #0a0a0c;
+  --btn-primary-fg: #ffffff;
+  --btn-primary-hover: #27272a;
+
+  /* Focus & Links */
+  --link-color: #1a73e8;
+  --focus-ring: #1a73e8;
+  --cli-blue: #4285f4;
+
+  /* Semantic Data Colours (Light) */
+  --data-new: #1967d2;
+  --data-cached: #aecbfa;
+  --data-output: #e37400;
+  --source-app: #3f3f46;
+  --source-app-tint: rgba(63, 63, 70, 0.1);
+  --source-cli: #9334e6;
+  --source-cli-tint: rgba(147, 52, 230, 0.1);
+  --source-custom: #1a73e8;
+  --source-custom-tint: rgba(26, 115, 232, 0.1);
+
+  /* Status Colours */
+  --status-ok: #188038;
+  --status-ok-bg: #e6f4ea;
+  --status-warn: #e37400;
+  --status-warn-icon: #ffb02e;
+  --status-warn-bg: #fef7e0;
+  --status-error: #d93025;
+  --status-error-bg: #fce8e6;
+
+  /* Shadows */
+  --shadow-selected: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-composer: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  /* Radii */
+  --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-nav: 10px;
+  --radius-composer: 20px;
+  --radius-input: 8px;
+  --radius-pill: 9999px;
+
+  /* Spacing & Density */
+  --panel-pad-x: 32px;
+  --panel-pad-y: 24px;
+  --card-pad: 20px;
+  --card-gap: 16px;
+  --row-height: 44px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed: 64px;
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-page: 220ms;
+  --dur-bar: 300ms;
+  --dur-expand: 200ms;
+  --dur-drawer: 280ms;
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #131313;
+  --bg-surface: #1f1f1f;
+  --bg-subtle: #2a2a2c;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-pressed: rgba(255, 255, 255, 0.12);
+  --bg-scrim: rgba(0, 0, 0, 0.45);
+
+  --border-panel: rgba(255, 255, 255, 0.16);
+  --border-card: rgba(255, 255, 255, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-divider: rgba(255, 255, 255, 0.16);
+
+  --text-strong: #e3e3e3;
+  --text-standard: #c4c7c5;
+  --text-muted: #9a9a9a;
+  --text-section: #8e918f;
+  --text-time: #8e918f;
+  --text-faint: #5e5e5e;
+  --text-code: #a8c7fa;
+
+  --btn-primary-bg: #ffffff;
+  --btn-primary-fg: #0a0a0c;
+  --btn-primary-hover: #e3e3e3;
+
+  --link-color: #8ab4f8;
+  --focus-ring: #8ab4f8;
+  --cli-blue: #8ab4f8;
+
+  --data-new: #8ab4f8;
+  --data-cached: #3c5a8a;
+  --data-output: #fcad70;
+  --source-app: #a1a1aa;
+  --source-app-tint: rgba(161, 161, 170, 0.16);
+  --source-cli: #c58af9;
+  --source-cli-tint: rgba(197, 138, 249, 0.16);
+  --source-custom: #8ab4f8;
+  --source-custom-tint: rgba(138, 180, 248, 0.16);
+
+  --status-ok: #81c995;
+  --status-ok-bg: rgba(129, 201, 149, 0.14);
+  --status-warn: #fdd663;
+  --status-warn-icon: #fdd663;
+  --status-warn-bg: rgba(253, 214, 99, 0.14);
+  --status-error: #f28b82;
+  --status-error-bg: rgba(242, 139, 130, 0.14);
+
+  --shadow-selected: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-composer: 0 1px 4px rgba(0, 0, 0, 0.32);
+  --shadow-elevated: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+[data-density="compact"] {
+  --panel-pad-x: 24px;
+  --panel-pad-y: 16px;
+  --card-pad: 14px;
+  --card-gap: 12px;
+  --row-height: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-page: 0ms;
+    --dur-bar: 0ms;
+    --dur-expand: 0ms;
+    --dur-drawer: 0ms;
+  }
+}
+
+[data-reduced-motion="on"] {
+  --dur-page: 0ms;
+  --dur-bar: 0ms;
+  --dur-expand: 0ms;
+  --dur-drawer: 0ms;
+}

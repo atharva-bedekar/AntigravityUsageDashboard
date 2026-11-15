@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Sources - Antigravity Usage (Light)</title>
+<!-- Google Fonts: Public Sans & Fira Code / Cascadia style mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Forms and Container Queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+  </style>
+</head>
+<body class="bg-neutral-50 text-neutral-900 font-body antialiased h-screen overflow-hidden flex flex-col select-none text-sm">
+<!-- TOP WINDOWS CHROME / TITLEBAR (32px h-8 docked full-width) -->
+<header class="flex justify-between items-center w-full px-3 h-8 select-none bg-neutral-50 border-b border-neutral-200 shrink-0 text-xs">
+<!-- Left: App brand & Window Menus -->
+<div class="flex items-center gap-3">
+<span class="font-headline font-semibold text-neutral-900 tracking-tight flex items-center gap-1.5">
+<span class="w-3.5 h-3.5 rounded-full bg-neutral-950 text-white flex items-center justify-center text-[9px] font-bold">A</span>
+        Antigravity Usage
+      </span>
+<div class="h-3.5 w-[1px] bg-neutral-300"></div>
+<nav class="flex items-center gap-1 text-neutral-600">
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 transition-colors">Usage</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 transition-colors">View</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 transition-colors">Window</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 transition-colors">Help</button>
+</nav>
+</div>
+<!-- Center: Runtime URI / Address string -->
+<div class="hidden md:flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-neutral-200/60 text-neutral-500 font-mono text-[11px] border border-neutral-300/40">
+<span class="material-symbols-outlined text-neutral-400 text-xs" data-icon="lock">lock</span>
+<span>antigravity-runtime://sources/catalog</span>
+</div>
+<!-- Right: Windows Controls (minimize, square, close) -->
+<div class="flex items-center h-full -mr-3">
+<button class="h-8 w-11 flex items-center justify-center hover:bg-neutral-200 text-neutral-600 transition-colors" title="Minimize">
+<span class="material-symbols-outlined text-sm" data-icon="minimize">minimize</span>
+</button>
+<button class="h-8 w-11 flex items-center justify-center hover:bg-neutral-200 text-neutral-600 transition-colors" title="Maximize">
+<span class="material-symbols-outlined text-xs" data-icon="crop_square">crop_square</span>
+</button>
+<button class="h-8 w-11 flex items-center justify-center hover:bg-red-600 hover:text-white text-neutral-600 transition-colors" title="Close">
+<span class="material-symbols-outlined text-sm" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- MAIN APPLICATION SHELL -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- LEFT SIDEBAR -->
+<aside class="flex flex-col justify-between h-full p-3 w-72 select-none shrink-0 bg-neutral-50 border-r border-neutral-200 text-neutral-800">
+<!-- Top Section -->
+<div class="flex flex-col gap-3">
+<!-- Logo & Navigation Arrows -->
+<div class="flex items-center justify-between px-1.5 pt-1">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-neutral-950 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+              A
+            </div>
+<div>
+<div class="font-headline text-sm font-semibold text-neutral-950 leading-tight">Antigravity</div>
+<div class="text-[11px] text-neutral-500 leading-tight">Usage v3</div>
+</div>
+</div>
+<!-- Controls -->
+<div class="flex items-center gap-1 text-neutral-400">
+<button class="p-1 rounded hover:bg-neutral-200 hover:text-neutral-700 transition" title="Back">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back_ios">arrow_back_ios</span>
+</button>
+<button class="p-1 rounded hover:bg-neutral-200 hover:text-neutral-700 transition" title="Forward">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward_ios">arrow_forward_ios</span>
+</button>
+<button class="p-1 rounded hover:bg-neutral-200 hover:text-neutral-700 transition ml-1" title="Search">
+<span class="material-symbols-outlined text-sm" data-icon="search">search</span>
+</button>
+</div>
+</div>
+<!-- Rescan Pill CTA -->
+<button class="w-full flex items-center justify-between bg-white hover:bg-neutral-100 text-neutral-900 border border-neutral-200 rounded-lg px-3 py-1.5 text-xs font-medium shadow-xs transition active:scale-[0.99]">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-xs text-neutral-700" data-icon="refresh">refresh</span>
+            Rescan Sessions
+          </span>
+<span class="font-mono text-neutral-400 text-[10px]">20:25</span>
+</button>
+<!-- Main Navigation items -->
+<nav class="space-y-0.5 text-xs">
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="bar_chart">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="history">history</span>
+<span>Sessions &amp; Runs</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="folder_open">folder_open</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="attach_money">attach_money</span>
+<span>Costs</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="pie_chart">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+<!-- ACTIVE ITEM: Data Sources -->
+<a class="flex items-center gap-3 bg-white text-neutral-950 font-medium rounded-lg px-2.5 py-1.5 border border-neutral-200/90 shadow-xs transition" href="#">
+<span class="material-symbols-outlined text-neutral-950" data-icon="database">database</span>
+<span>Data Sources</span>
+<span class="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+</a>
+</nav>
+<!-- SOURCES section -->
+<div class="pt-2">
+<div class="px-2 pb-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Sources</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between px-2.5 py-1 text-xs text-neutral-700 rounded hover:bg-neutral-100 cursor-pointer">
+<span class="flex items-center gap-2">
+<span class="bg-neutral-900 text-white text-[9px] font-bold px-1.5 py-0.2 rounded leading-tight">APP</span>
+<span>Antigravity App</span>
+</span>
+<span class="font-mono text-neutral-400 text-xs">6</span>
+</div>
+<div class="flex items-center justify-between px-2.5 py-1 text-xs text-neutral-700 rounded hover:bg-neutral-100 cursor-pointer">
+<span class="flex items-center gap-2">
+<span class="bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded leading-tight">CLI</span>
+<span>Antigravity CLI</span>
+</span>
+<span class="font-mono text-neutral-400 text-xs">114</span>
+</div>
+</div>
+</div>
+<!-- RECENT SESSIONS section -->
+<div class="pt-1">
+<div class="px-2 pb-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Recent Sessions</div>
+<div class="space-y-0.5 text-xs text-neutral-600">
+<div class="px-2.5 py-1 rounded hover:bg-neutral-100 flex items-center justify-between group cursor-pointer">
+<span class="truncate pr-1 text-neutral-800">AntigravityUsageDashboard</span>
+<span class="text-[10px] text-neutral-400 shrink-0 font-mono">14m</span>
+</div>
+<div class="px-2.5 py-1 rounded hover:bg-neutral-100 flex items-center justify-between group cursor-pointer">
+<span class="truncate pr-1">Rust Windows App UI De...</span>
+<span class="text-[10px] text-neutral-400 shrink-0 font-mono">1h</span>
+</div>
+<div class="px-2.5 py-1 rounded hover:bg-neutral-100 flex items-center justify-between group cursor-pointer">
+<span class="truncate pr-1">SLM Retraining</span>
+<span class="text-[10px] text-neutral-400 shrink-0 font-mono">3h</span>
+</div>
+<div class="px-2.5 py-1 rounded hover:bg-neutral-100 flex items-center justify-between group cursor-pointer">
+<span class="truncate pr-1">Learning</span>
+<span class="text-[10px] text-neutral-400 shrink-0 font-mono">yesterday</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Section (Pinned Bottom of Sidebar) -->
+<div class="pt-3 border-t border-neutral-200/80 space-y-0.5 text-xs">
+<a class="flex items-center gap-2.5 text-neutral-600 hover:text-neutral-900 px-2.5 py-1.5 rounded-lg hover:bg-neutral-100 transition" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="terminal">terminal</span>
+<span>CLI Sync Terminal</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 hover:text-neutral-900 px-2.5 py-1.5 rounded-lg hover:bg-neutral-100 transition" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- MAIN VIEW AREA -->
+<main class="flex-1 bg-neutral-100/60 p-4 overflow-y-auto custom-scrollbar">
+<!-- NESTED CONTENT PANEL (16px radius, border, white canvas) -->
+<div class="bg-white rounded-2xl border border-neutral-200/90 shadow-sm p-7 max-w-6xl mx-auto flex flex-col gap-6">
+<!-- Top Header & Breadcrumbs -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-xs text-neutral-500 font-medium">
+<span class="text-neutral-400">Data Sources</span>
+<span>/</span>
+<span class="text-neutral-900">Engine Log Ingestion</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition" title="Ingestion Details &amp; Glossary">
+<span class="material-symbols-outlined text-base" data-icon="info">info</span>
+</button>
+<button class="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition" title="More Options">
+<span class="material-symbols-outlined text-base" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Summary Headline -->
+<div class="flex flex-col gap-1.5 border-b border-neutral-100 pb-5">
+<div class="flex items-center gap-3">
+<h1 class="text-2xl font-normal text-neutral-950 tracking-tight">
+              Both sources were read. <span class="font-medium text-neutral-950">120 of 236</span> log files had token data. Nothing failed to parse.
+            </h1>
+</div>
+<p class="text-xs text-neutral-500">
+            Real-time parser scanning local SQLite DBs, JSONL log files, and proto transcript state across desktop and terminal runtimes.
+          </p>
+</div>
+<!-- TWO SOURCE CARDS (Bento / Side-by-side grid) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<!-- CARD 1: Antigravity App -->
+<div class="bg-white rounded-xl border border-neutral-200 p-5 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-colors">
+<div>
+<!-- Card Header -->
+<div class="flex items-center justify-between pb-3.5 mb-2 border-b border-neutral-100">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    A
+                  </div>
+<span class="font-medium text-[15px] text-neutral-950">Antigravity App</span>
+</div>
+<div class="flex items-center gap-3">
+<!-- Status Chip -->
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#E6F4EA] text-[#188038]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+                    OK
+                  </span>
+<!-- Toggle Switch (Active ON) -->
+<button aria-label="Toggle App Source" class="w-9 h-5 bg-neutral-900 rounded-full p-0.5 relative transition-colors focus:outline-none">
+<div class="w-4 h-4 bg-white rounded-full transition-transform translate-x-4 shadow-sm"></div>
+</button>
+</div>
+</div>
+<!-- Key-Value Rows -->
+<div class="divide-y divide-neutral-100 text-xs">
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Folder</span>
+<span class="bg-[#F5F5F5] font-mono text-[11px] px-2 py-0.5 rounded text-neutral-800 border border-neutral-200/60 select-text">~/.gemini/antigravity/brain</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Transcript files</span>
+<span class="font-mono font-medium text-neutral-900">8</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">With token data</span>
+<span class="font-mono font-semibold text-[#188038]">6</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Without token data</span>
+<span class="font-mono text-neutral-400">2</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Dates</span>
+<span class="text-neutral-700">28 Oct – 15 Nov 2026</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">New / Cached / Output</span>
+<div class="font-mono text-[11px] flex items-center gap-1.5 text-neutral-800 font-medium">
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#1967D2]"></span>2.68M
+                    </span>
+<span class="text-neutral-300">/</span>
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#AECBFA]"></span>15.72M
+                    </span>
+<span class="text-neutral-300">/</span>
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#E37400]"></span>116.9K
+                    </span>
+</div>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Titles &amp; projects from</span>
+<span class="bg-[#F5F5F5] font-mono text-[11px] px-1.5 py-0.5 rounded text-[#3E5270]">conversation_summaries.db</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Titles found</span>
+<span class="font-mono text-neutral-800">5 of 6</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Projects found</span>
+<span class="font-mono text-neutral-800">6 of 6</span>
+</div>
+</div>
+</div>
+<!-- Card Footer -->
+<div class="pt-4 mt-2 border-t border-neutral-100">
+<a class="text-[#1A73E8] text-xs font-medium hover:underline inline-flex items-center gap-1" href="#">
+<span>Open folder</span>
+<span class="material-symbols-outlined text-xs" data-icon="north_east">north_east</span>
+</a>
+</div>
+</div>
+<!-- CARD 2: Antigravity CLI -->
+<div class="bg-white rounded-xl border border-neutral-200 p-5 shadow-xs flex flex-col justify-between hover:border-neutral-300 transition-colors">
+<div>
+<!-- Card Header -->
+<div class="flex items-center justify-between pb-3.5 mb-2 border-b border-neutral-100">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-500 text-white flex items-center justify-center text-xs font-mono font-bold shadow-xs">
+                    CLI
+                  </div>
+<span class="font-mono font-semibold text-[15px] text-[#4285F4]">Antigravity CLI</span>
+</div>
+<div class="flex items-center gap-3">
+<!-- Status Chip -->
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-[#E6F4EA] text-[#188038]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+                    OK
+                  </span>
+<!-- Toggle Switch (Active ON) -->
+<button aria-label="Toggle CLI Source" class="w-9 h-5 bg-neutral-900 rounded-full p-0.5 relative transition-colors focus:outline-none">
+<div class="w-4 h-4 bg-white rounded-full transition-transform translate-x-4 shadow-sm"></div>
+</button>
+</div>
+</div>
+<!-- Key-Value Rows -->
+<div class="divide-y divide-neutral-100 text-xs">
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Folder</span>
+<span class="bg-[#F5F5F5] font-mono text-[11px] px-2 py-0.5 rounded text-neutral-800 border border-neutral-200/60 select-text">~/.gemini/antigravity-cli/brain</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Transcript files</span>
+<span class="font-mono font-medium text-neutral-900">228</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">With token data</span>
+<span class="font-mono font-semibold text-[#188038]">114</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Without token data</span>
+<span class="font-mono text-neutral-400">114</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Dates</span>
+<span class="text-neutral-700">17 – 24 Oct 2026</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">New / Cached / Output</span>
+<div class="font-mono text-[11px] flex items-center gap-1.5 text-neutral-800 font-medium">
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#1967D2]"></span>25.62M
+                    </span>
+<span class="text-neutral-300">/</span>
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#AECBFA]"></span>260.59M
+                    </span>
+<span class="text-neutral-300">/</span>
+<span class="inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#E37400]"></span>2.96M
+                    </span>
+</div>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Titles &amp; projects from</span>
+<span class="bg-[#F5F5F5] font-mono text-[11px] px-1.5 py-0.5 rounded text-[#3E5270]">history.jsonl</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Titles found</span>
+<span class="font-mono text-neutral-800">110 of 114</span>
+</div>
+<div class="py-2.5 flex items-center justify-between">
+<span class="text-neutral-500">Projects found</span>
+<span class="font-mono text-neutral-800">110 of 114</span>
+</div>
+</div>
+</div>
+<!-- Card Footer -->
+<div class="pt-4 mt-2 border-t border-neutral-100">
+<a class="text-[#1A73E8] text-xs font-medium hover:underline inline-flex items-center gap-1" href="#">
+<span>Open folder</span>
+<span class="material-symbols-outlined text-xs" data-icon="north_east">north_east</span>
+</a>
+</div>
+</div>
+</div>
+<!-- COLLAPSIBLE NOTICE CARD ("Not readable") -->
+<div class="border border-neutral-200 rounded-xl bg-neutral-50/80 p-4 text-xs transition hover:bg-neutral-50">
+<div class="flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-neutral-400 group-hover:text-neutral-700 transition" data-icon="expand_more">expand_more</span>
+<span class="font-medium text-neutral-800">Not readable (2 files)</span>
+</div>
+<span class="text-neutral-400 text-[11px]">Legacy binary cache</span>
+</div>
+<div class="mt-2.5 ml-6 space-y-2">
+<p class="text-neutral-600">
+              Older sessions that only have binary <code class="bg-neutral-200/70 text-neutral-800 px-1 py-0.5 rounded font-mono text-[11px]">.pb</code> files have no readable token log. 2 skipped.
+            </p>
+<div class="flex items-center gap-2 pt-1">
+<span class="bg-white border border-neutral-200 px-2 py-1 rounded font-mono text-[11px] text-neutral-700 shadow-2xs">
+                3163d2d4
+              </span>
+<span class="bg-white border border-neutral-200 px-2 py-1 rounded font-mono text-[11px] text-neutral-700 shadow-2xs">
+                7a90e112
+              </span>
+</div>
+</div>
+</div>
+<!-- SCAN ACTION CARD & ACTION BUTTONS -->
+<div class="flex flex-col gap-3 pt-1">
+<!-- Last Scan summary pill container -->
+<div class="rounded-xl border border-neutral-200 bg-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+<div class="flex items-center gap-2 text-xs text-neutral-600">
+<span class="w-2 h-2 rounded-full bg-[#188038]"></span>
+<span>Last scanned at <strong class="font-medium text-neutral-900">20:25</strong> · Duration <strong class="font-medium text-neutral-900">1.4s</strong> · <strong class="font-medium text-neutral-900">236</strong> files read · <strong class="font-medium text-neutral-900">120</strong> with tokens</span>
+</div>
+<button class="bg-[#0A0A0C] hover:bg-neutral-800 text-white px-4 py-2 text-xs font-medium rounded-full transition shadow-sm flex items-center justify-center gap-1.5 shrink-0 active:scale-[0.98]">
+<span class="material-symbols-outlined text-xs" data-icon="sync">sync</span>
+<span>Rescan now</span>
+</button>
+</div>
+<!-- Add custom folder CTA -->
+<div>
+<button class="bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-800 px-4 py-2 text-xs font-medium rounded-full flex items-center gap-2 shadow-xs transition active:scale-[0.98]">
+<span class="material-symbols-outlined text-sm text-neutral-600" data-icon="add">add</span>
+<span>Add custom folder</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BOTTOM STATUS BAR (Anchored along the very bottom) -->
+<footer class="h-6 bg-neutral-50 border-t border-neutral-200 px-3 flex items-center justify-between text-[11px] text-neutral-500 font-mono shrink-0 select-none">
+<!-- Left: Status Indicator & Log Stats -->
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<!-- Right: Runtime Metadata -->
+<div class="flex items-center gap-3 text-neutral-400">
+<span>UTC+5:30</span>
+<span>|</span>
+<span>Light Theme</span>
+<span>|</span>
+<span class="text-neutral-600">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</body></html>

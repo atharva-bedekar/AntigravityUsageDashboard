@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — Sessions</title>
+<!-- Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            DEFAULT: "0.5rem",
+            lg: "1rem",
+            xl: "1.5rem",
+            full: "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["'JetBrains Mono'", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+    /* Tabular figures for telemetry accuracy */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-[#FAFAFA] text-[#0A0A0C] font-body flex flex-col select-none antialiased">
+<!-- 1. Top Windows Title / Menu Bar (Shared Component: TopNavBar Anchor) -->
+<header class="flex justify-between items-center w-full px-3 h-8 bg-neutral-50 border-b border-neutral-200 select-none text-neutral-900 shrink-0 z-30">
+<div class="flex items-center gap-3">
+<!-- Window Icon / Brand Identity -->
+<div class="flex items-center gap-1.5 pr-2 border-r border-neutral-200">
+<div class="w-4 h-4 rounded bg-[#0A0A0C] text-white flex items-center justify-center font-bold text-[10px] leading-none">
+          A
+        </div>
+<span class="text-xs font-medium text-neutral-900 tracking-wide">Antigravity Usage</span>
+</div>
+<!-- Native Windows Menu Items -->
+<nav class="flex items-center gap-1 text-[11px] text-neutral-600 font-normal">
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 text-neutral-800 transition-colors">Usage</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 text-neutral-800 transition-colors">View</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 text-neutral-800 transition-colors">Window</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 text-neutral-800 transition-colors">Help</button>
+</nav>
+</div>
+<!-- Window System Glyphs -->
+<div class="flex items-center">
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors" title="Minimize">
+<span class="material-symbols-outlined text-[15px]" data-icon="minimize">minimize</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors" title="Maximize">
+<span class="material-symbols-outlined text-[14px]" data-icon="crop_square">crop_square</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-[#E81123] hover:text-white transition-colors" title="Close">
+<span class="material-symbols-outlined text-[16px]" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- 2. Main Desktop Layout (Sidebar + Pinned Canvas) -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar (Shared Component: SideNavBar Blueprint) -->
+<aside class="w-64 bg-[#FAFAFA] border-r border-[#E5E5E5] flex flex-col justify-between shrink-0 h-full select-none text-xs">
+<!-- Top Section -->
+<div class="p-3 flex flex-col gap-3">
+<!-- Brand Header & Navigation Controls -->
+<div class="flex items-center justify-between px-1 py-1">
+<div class="flex items-center gap-2.5">
+<div aria-label="Antigravity Logo icon glyph" class="w-7 h-7 rounded-lg bg-[#0A0A0C] text-white flex items-center justify-center font-bold text-xs shadow-xs tracking-tighter">
+              A
+            </div>
+<div class="flex flex-col">
+<span class="font-headline text-xs font-semibold text-neutral-950 tracking-tight leading-none">Antigravity</span>
+<span class="text-[10px] text-neutral-500 font-mono mt-0.5">Usage v3</span>
+</div>
+</div>
+<!-- History/Search mini-controls -->
+<div class="flex items-center gap-0.5 text-neutral-400">
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-neutral-200 hover:text-neutral-800 transition-colors" title="Back">
+<span class="material-symbols-outlined text-[14px]">arrow_back</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-neutral-200 hover:text-neutral-800 transition-colors" title="Forward">
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center hover:bg-neutral-200 hover:text-neutral-800 transition-colors" title="Search Everything">
+<span class="material-symbols-outlined text-[14px]">search</span>
+</button>
+</div>
+</div>
+<!-- Rescan CTA Button -->
+<button class="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-[#E0E0E0] rounded-lg text-neutral-800 text-xs font-medium shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:bg-neutral-50 hover:border-neutral-300 transition-all active:scale-[0.99]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-neutral-600 animate-spin-hover" data-icon="refresh">refresh</span>
+<span>Rescan Sessions</span>
+</div>
+<span class="text-[10px] font-mono text-neutral-400">20:25</span>
+</button>
+<!-- Main Navigation list -->
+<nav class="flex flex-col gap-0.5 mt-1">
+<!-- Inactive Tab -->
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Inactive Tab -->
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="bar_chart">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<!-- ACTIVE TAB: Sessions & Runs -->
+<a class="flex items-center gap-2.5 bg-white text-neutral-950 font-medium rounded-lg px-2.5 py-1.5 border border-[#E0E0E0] shadow-[0_1px_2px_rgba(0,0,0,0.04)]" href="#">
+<span class="material-symbols-outlined text-[17px] text-[#0A0A0C]" data-icon="history">history</span>
+<span class="flex-1">Sessions &amp; Runs</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#0A0A0C]"></span>
+</a>
+<!-- Inactive Tab -->
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="folder_open">folder_open</span>
+<span>Projects</span>
+</a>
+<!-- Inactive Tab -->
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="pie_chart">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+</nav>
+<!-- SOURCES section -->
+<div class="mt-2 pt-2 border-t border-[#EDEDED]">
+<div class="px-2 text-[10px] font-semibold text-[#828283] uppercase tracking-wider mb-1.5">Sources</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-100 text-neutral-700 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.2 bg-[#3F3F46] text-white text-[9px] font-bold rounded tracking-tight">APP</span>
+<span class="text-xs">Antigravity App</span>
+</div>
+<span class="font-mono text-[11px] text-neutral-400">6</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-100 text-neutral-700 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.2 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+<span class="text-xs">Antigravity CLI</span>
+</div>
+<span class="font-mono text-[11px] text-neutral-400">114</span>
+</div>
+</div>
+</div>
+<!-- RECENT SESSIONS section -->
+<div class="mt-2 pt-2 border-t border-[#EDEDED]">
+<div class="px-2 text-[10px] font-semibold text-[#828283] uppercase tracking-wider mb-1 flex items-center justify-between">
+<span>Recent Sessions</span>
+<span class="text-[10px] text-neutral-400 font-normal">Recent</span>
+</div>
+<div class="flex flex-col gap-0.5 text-xs text-neutral-600">
+<a class="px-2 py-1 rounded hover:bg-neutral-100 truncate text-neutral-800 font-normal flex items-center gap-1.5" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+<span class="truncate">AntigravityUsageDashboard</span>
+</a>
+<a class="px-2 py-1 rounded hover:bg-neutral-100 truncate text-neutral-600 hover:text-neutral-900 flex items-center gap-1.5" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-300"></span>
+<span class="truncate">Rust Windows App UI De...</span>
+</a>
+<a class="px-2 py-1 rounded hover:bg-neutral-100 truncate text-neutral-600 hover:text-neutral-900 flex items-center gap-1.5" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-300"></span>
+<span class="truncate">SLMRetraining</span>
+</a>
+<a class="px-2 py-1 rounded hover:bg-neutral-100 truncate text-neutral-600 hover:text-neutral-900 flex items-center gap-1.5" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-300"></span>
+<span class="truncate">Learning</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-3 border-t border-[#E5E5E5] flex flex-col gap-0.5">
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="terminal">terminal</span>
+<span>CLI Sync Terminal</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 rounded-lg px-2.5 py-1.5 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px] text-neutral-500" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- 3. Main Content Panel Canvas (16px radius, border border-[#E0E0E0], nested padding) -->
+<main class="flex-1 bg-[#FAFAFA] p-3 pl-2.5 overflow-hidden flex flex-col">
+<div class="flex-1 bg-white rounded-2xl border border-[#E0E0E0] p-6 flex flex-col gap-5 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<!-- Top Breadcrumb Bar -->
+<div class="flex items-center justify-between shrink-0">
+<div class="flex items-center gap-2">
+<span class="font-headline text-lg font-medium text-[#0A0A0C] tracking-tight">Sessions</span>
+<span class="text-neutral-300">/</span>
+<span class="text-xs text-neutral-500 font-normal">All Runs &amp; Subagents</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 text-neutral-600 transition-colors" title="Column Glossary">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 text-neutral-600 transition-colors" title="More Options">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Pinned Filter Bar (Composer-style pill container: 20px radius, 1px solid #E6E6E6) -->
+<div class="bg-[#FFFFFF] border border-[#E6E6E6] rounded-full px-4 py-1.5 flex items-center justify-between text-xs text-neutral-700 shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0">
+<div class="flex items-center gap-2 flex-wrap">
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium text-neutral-800 transition-colors">
+<span>Last 30 days</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-500">expand_more</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium text-neutral-800 transition-colors">
+<span>All sources</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-500">expand_more</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium text-neutral-800 transition-colors">
+<span>All projects</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-500">expand_more</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium text-neutral-800 transition-colors">
+<span>≈ Gemini 3.8 Flash pricing</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-500">expand_more</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium text-neutral-800 transition-colors">
+<span>₹ INR</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-500">expand_more</span>
+</button>
+</div>
+<!-- Live Status Badge -->
+<div class="flex items-center gap-1.5 pl-3 border-l border-neutral-200">
+<span class="w-2 h-2 rounded-full bg-[#188038] animate-pulse"></span>
+<span class="text-[11px] font-medium text-[#188038]">Live Synced</span>
+</div>
+</div>
+<!-- Summary Sentence (24px/36px) -->
+<div class="shrink-0">
+<p class="text-[22px] leading-8 text-neutral-900 tracking-tight font-normal">
+<span class="font-medium">120 sessions</span> with token data. <span class="font-medium text-neutral-800">3 started subagents</span>. <span class="text-neutral-500">4 have no project.</span>
+</p>
+</div>
+<!-- Toolbar Row (Search + Subagent grouping toggle + Column select) -->
+<div class="flex items-center justify-between gap-4 shrink-0">
+<!-- Search input -->
+<div class="relative w-80">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-[16px]">search</span>
+<input class="w-full bg-[#F5F5F5] rounded-lg pl-8 pr-3 py-1.5 text-xs text-neutral-800 placeholder-neutral-400 border border-transparent focus:border-neutral-300 focus:bg-white focus:outline-none transition-all" placeholder="Search title, ID or project" type="text"/>
+</div>
+<!-- Right controls -->
+<div class="flex items-center gap-4">
+<!-- Group Subagents Switch -->
+<label class="flex items-center gap-2.5 text-xs text-neutral-700 cursor-pointer select-none">
+<span>Group subagents under parent</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#0A0A0C]"></div>
+</div>
+</label>
+<!-- Columns Button -->
+<button class="bg-[#FAFAFA] border border-[#E5E5E5] hover:border-neutral-300 rounded-md px-2.5 py-1 text-xs font-medium text-neutral-700 flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[14px] text-neutral-500">view_column</span>
+<span>Columns</span>
+<span class="material-symbols-outlined text-[12px] text-neutral-400">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Sessions Data Table Card (12px radius, border border-[#E6E6E6], no shadow) -->
+<div class="flex-1 rounded-xl border border-[#E6E6E6] overflow-hidden bg-white flex flex-col min-h-0">
+<!-- Table Header -->
+<div class="bg-[#F5F5F5] border-b border-[#E6E6E6] text-[11px] font-semibold text-neutral-500 uppercase tracking-wider py-2.5 px-4 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 shrink-0">
+<div class="text-center font-normal"></div>
+<div>Source</div>
+<div>Title</div>
+<div>Project</div>
+<div>Started</div>
+<div>Duration</div>
+<div class="text-right">Steps</div>
+<div class="text-right">New</div>
+<div class="text-right">Cached</div>
+<div class="text-right">Output</div>
+<div class="text-right flex items-center justify-end gap-0.5 text-neutral-800">
+<span>≈ Cost</span>
+<span class="material-symbols-outlined text-[13px]">arrow_downward</span>
+</div>
+<div class="text-center">Split</div>
+</div>
+<!-- Table Body Rows (Scrollable) -->
+<div class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[#F0F0F0] text-xs text-neutral-800">
+<!-- ROW 1 (Expanded Parent: Refactor pricing catalog) -->
+<div class="px-4 py-2 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors bg-neutral-50/30">
+<div class="flex items-center justify-center cursor-pointer text-neutral-500 hover:text-neutral-900">
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+</div>
+<div class="flex items-center gap-2 min-w-0 pr-2">
+<span class="font-medium text-neutral-900 truncate">Refactor pricing catalog</span>
+<span class="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] px-1.5 py-0.2 rounded-full font-medium shrink-0">+2 subagents</span>
+<span class="text-neutral-400 text-[10px] shrink-0">(incl. subagents)</span>
+</div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">24 Oct, 14:12</div>
+<div class="text-neutral-600 font-mono text-[11px]">1h 12m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">84</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">1.42M</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">12.80M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">184.2K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-950 tabular-nums">≈ ₹224</div>
+<div class="flex justify-center">
+<!-- Mini Split Bar: New (#1967D2), Cached (#AECBFA), Output (#E37400) -->
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 10%" title="New input"></div>
+<div class="bg-[#AECBFA]" style="width: 80%" title="Cached input"></div>
+<div class="bg-[#E37400]" style="width: 10%" title="Output"></div>
+</div>
+</div>
+</div>
+<!-- ROW 1a (Indented Child 1: Codebase Researcher) -->
+<div class="px-4 py-1.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors bg-[#FAFAFA]/70 border-l-2 border-l-[#9334E6]/40">
+<div class="flex items-center justify-center text-neutral-300 font-mono text-xs">
+                └
+              </div>
+<div>
+<span class="px-1.5 py-0.5 bg-neutral-100 text-[#9334E6] border border-purple-200 text-[9px] font-bold rounded tracking-tight">SUB</span>
+</div>
+<div class="flex items-center gap-2 min-w-0 pr-2 pl-2">
+<span class="material-symbols-outlined text-[13px] text-purple-600">psychology</span>
+<span class="text-neutral-700 truncate text-[11.5px]">Codebase Researcher: pricing schema</span>
+</div>
+<div class="truncate text-neutral-500 font-mono text-[11px] px-1.5 py-0.5">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-500 font-mono text-[11px]">24 Oct, 14:15</div>
+<div class="text-neutral-500 font-mono text-[11px]">12m</div>
+<div class="text-right text-neutral-500 font-mono text-[11px]">18</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">210.4K</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">2.15M</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">24.1K</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">≈ ₹35</div>
+<div class="flex justify-center">
+<div class="w-14 h-1.5 rounded-full bg-neutral-200 flex overflow-hidden opacity-75">
+<div class="bg-[#1967D2]" style="width: 10%"></div>
+<div class="bg-[#AECBFA]" style="width: 80%"></div>
+<div class="bg-[#E37400]" style="width: 10%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 1b (Indented Child 2: Plan Critic) -->
+<div class="px-4 py-1.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors bg-[#FAFAFA]/70 border-l-2 border-l-[#9334E6]/40">
+<div class="flex items-center justify-center text-neutral-300 font-mono text-xs">
+                └
+              </div>
+<div>
+<span class="px-1.5 py-0.5 bg-neutral-100 text-[#9334E6] border border-purple-200 text-[9px] font-bold rounded tracking-tight">SUB</span>
+</div>
+<div class="flex items-center gap-2 min-w-0 pr-2 pl-2">
+<span class="material-symbols-outlined text-[13px] text-purple-600">rate_review</span>
+<span class="text-neutral-700 truncate text-[11.5px]">Plan Critic: pricing catalog</span>
+</div>
+<div class="truncate text-neutral-500 font-mono text-[11px] px-1.5 py-0.5">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-500 font-mono text-[11px]">24 Oct, 14:38</div>
+<div class="text-neutral-500 font-mono text-[11px]">19m</div>
+<div class="text-right text-neutral-500 font-mono text-[11px]">22</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">318.0K</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">3.10M</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">31.8K</div>
+<div class="text-right font-mono text-[11px] text-neutral-600 tabular-nums">≈ ₹51</div>
+<div class="flex justify-center">
+<div class="w-14 h-1.5 rounded-full bg-neutral-200 flex overflow-hidden opacity-75">
+<div class="bg-[#1967D2]" style="width: 10%"></div>
+<div class="bg-[#AECBFA]" style="width: 80%"></div>
+<div class="bg-[#E37400]" style="width: 10%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 2: Fix transcript parser edge case -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+</div>
+<div class="truncate font-medium text-neutral-900 pr-2">
+                Fix transcript parser edge case
+              </div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">23 Oct, 19:04</div>
+<div class="text-neutral-600 font-mono text-[11px]">54m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">61</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">980.2K</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">9.40M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">112.0K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹162</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 9%"></div>
+<div class="bg-[#AECBFA]" style="width: 82%"></div>
+<div class="bg-[#E37400]" style="width: 9%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 3: Rust Windows App UI Design -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#3F3F46] text-white text-[9px] font-bold rounded tracking-tight">APP</span>
+</div>
+<div class="truncate font-medium text-neutral-900 pr-2">
+                Rust Windows App UI Design
+              </div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">15 Nov, 20:47</div>
+<div class="text-neutral-600 font-mono text-[11px]">38m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">42</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">640.5K</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">4.12M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">38.4K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹94</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 14%"></div>
+<div class="bg-[#AECBFA]" style="width: 78%"></div>
+<div class="bg-[#E37400]" style="width: 8%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 4: Untitled session (Unattributed) -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 pr-2">
+<span class="italic text-neutral-500 truncate">Untitled session</span>
+<span class="bg-[#F5F5F5] text-neutral-600 font-mono text-[10px] px-1.5 py-0.2 rounded border border-neutral-200">3163d2d4</span>
+</div>
+<div class="text-neutral-400 italic text-[11px] flex items-center gap-1">
+<span>Unattributed</span>
+<span class="text-[10px] text-neutral-400 cursor-help" title="No project tag inferred or passed via CLI flag">ⓘ</span>
+</div>
+<div class="text-neutral-600 font-mono text-[11px]">21 Oct, 11:20</div>
+<div class="text-neutral-600 font-mono text-[11px]">29m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">33</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">412.0K</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">3.85M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">49.2K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹68</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 10%"></div>
+<div class="bg-[#AECBFA]" style="width: 80%"></div>
+<div class="bg-[#E37400]" style="width: 10%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 5: SLM Fine-Tuning Demo Pipeline -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#3F3F46] text-white text-[9px] font-bold rounded tracking-tight">APP</span>
+</div>
+<div class="truncate font-medium text-neutral-900 pr-2">
+                SLM Fine-Tuning Demo Pipeline
+              </div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                SLMRetraining
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">10 Nov, 16:05</div>
+<div class="text-neutral-600 font-mono text-[11px]">45m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">51</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">520.1K</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">3.90M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">29.5K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹81</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 12%"></div>
+<div class="bg-[#AECBFA]" style="width: 82%"></div>
+<div class="bg-[#E37400]" style="width: 6%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 6: Context Window & Cache Hit Benchmarking -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+</div>
+<div class="truncate font-medium text-neutral-900 pr-2">
+                Context Window &amp; Cache Hit Benchmarking
+              </div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                AntigravityUsageDashboard
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">18 Oct, 09:14</div>
+<div class="text-neutral-600 font-mono text-[11px]">1h 05m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">77</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">1.15M</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">10.20M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">142.0K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹186</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 10%"></div>
+<div class="bg-[#AECBFA]" style="width: 80%"></div>
+<div class="bg-[#E37400]" style="width: 10%"></div>
+</div>
+</div>
+</div>
+<!-- ROW 7: AST Tree-sitter Grammar Sync -->
+<div class="px-4 py-2.5 grid grid-cols-[24px_54px_1fr_160px_95px_70px_50px_70px_70px_70px_80px_70px] items-center gap-2 hover:bg-neutral-50/70 transition-colors">
+<div class="text-center text-neutral-300">•</div>
+<div>
+<span class="px-1.5 py-0.5 bg-[#9334E6] text-white text-[9px] font-bold rounded tracking-tight">CLI</span>
+</div>
+<div class="truncate font-medium text-neutral-900 pr-2">
+                AST Tree-sitter Grammar Sync
+              </div>
+<div class="truncate text-neutral-700 font-mono text-[11px] bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded w-max max-w-[150px]">
+                Learning
+              </div>
+<div class="text-neutral-600 font-mono text-[11px]">16 Oct, 22:30</div>
+<div class="text-neutral-600 font-mono text-[11px]">22m</div>
+<div class="text-right text-neutral-600 font-mono text-[11px]">28</div>
+<div class="text-right font-mono text-[11px] text-[#1967D2] tabular-nums font-medium">290.0K</div>
+<div class="text-right font-mono text-[11px] text-[#5A87C5] tabular-nums">2.80M</div>
+<div class="text-right font-mono text-[11px] text-[#E37400] tabular-nums">32.0K</div>
+<div class="text-right font-mono text-[11px] font-semibold text-neutral-900 tabular-nums">≈ ₹48</div>
+<div class="flex justify-center">
+<div class="w-14 h-2 rounded-full bg-neutral-200 flex overflow-hidden">
+<div class="bg-[#1967D2]" style="width: 9%"></div>
+<div class="bg-[#AECBFA]" style="width: 82%"></div>
+<div class="bg-[#E37400]" style="width: 9%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="flex items-center justify-between px-4 py-2.5 bg-[#FAFAFA] border-t border-[#E6E6E6] text-xs text-neutral-600 shrink-0">
+<div>
+              Showing <span class="font-medium text-neutral-900">1–25</span> of <span class="font-medium text-neutral-900">120</span> sessions
+            </div>
+<!-- Pagination buttons -->
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-white border border-[#E0E0E0] text-neutral-300 text-xs font-medium cursor-not-allowed" disabled="">
+                Previous
+              </button>
+<div class="flex items-center gap-1 font-mono text-xs px-1">
+<span class="w-6 h-6 flex items-center justify-center rounded bg-[#0A0A0C] text-white font-medium">1</span>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200 text-neutral-700">2</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200 text-neutral-700">3</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200 text-neutral-700">4</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200 text-neutral-700">5</button>
+</div>
+<button class="px-2.5 py-1 rounded bg-white border border-[#E0E0E0] text-neutral-700 hover:bg-neutral-50 text-xs font-medium shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors">
+                Next
+              </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- 4. Bottom Native Window Status Bar (Monospace Status Line Docked) -->
+<footer class="h-6 bg-[#FAFAFA] border-t border-[#E5E5E5] px-3 flex items-center justify-between font-mono text-[11px] text-[#71717A] shrink-0 select-none">
+<div class="flex items-center gap-2">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<div class="flex items-center gap-3">
+<span>UTC+5:30</span>
+<span class="text-neutral-300">|</span>
+<span>Light Theme</span>
+<span class="text-neutral-300">|</span>
+<span class="text-neutral-800 font-medium">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</body></html>

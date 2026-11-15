@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — Settings Feedback</title>
+<!-- Material Symbols & Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#0A0A0C",
+            "background-light": "#f7f7f7",
+            "background-dark": "#18181a",
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "Cascadia Code", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+  </style>
+</head>
+<body class="bg-[#FAFAFA] text-[#0A0A0C] font-body select-none h-screen w-screen overflow-hidden flex flex-col antialiased relative">
+<!-- TOP SHELL: Window Menu Bar & Title (Shared TopNavBar Component) -->
+<header class="bg-neutral-50 border-b border-neutral-200 flex justify-between items-center w-full px-3 h-8 shrink-0 select-none z-30">
+<div class="flex items-center gap-4 text-xs font-normal tracking-tight text-neutral-900">
+<div class="flex items-center gap-2 pr-2 border-r border-neutral-200">
+<!-- Antigravity App Glyph Icon -->
+<span class="w-4 h-4 rounded bg-[#0A0A0C] text-white flex items-center justify-center font-bold text-[10px] tracking-tighter">A</span>
+<span class="text-xs font-medium text-neutral-900 tracking-wide">Antigravity Usage</span>
+</div>
+<nav class="flex items-center gap-3 text-neutral-600 text-[11px]">
+<button class="hover:text-neutral-950 transition-colors">Usage</button>
+<button class="hover:text-neutral-950 transition-colors">View</button>
+<button class="hover:text-neutral-950 transition-colors">Window</button>
+<button class="hover:text-neutral-950 transition-colors">Help</button>
+</nav>
+<!-- URL Bar Pill Simulator -->
+<div class="flex items-center gap-1.5 bg-[#F5F5F5] border border-[#E5E5E5] px-2.5 py-0.5 rounded-full text-[11px] font-mono text-[#3E5270] shadow-inner ml-2">
+<span class="material-symbols-outlined text-[13px] text-[#71717A]">lock</span>
+<span>antigravity-runtime://settings/preferences</span>
+</div>
+</div>
+<!-- Trailing Native Window Controls -->
+<div class="flex items-center space-x-1">
+<button class="p-1 hover:bg-neutral-200 rounded transition-colors text-neutral-500" title="Minimize">
+<span class="material-symbols-outlined text-[14px]">minimize</span>
+</button>
+<button class="p-1 hover:bg-neutral-200 rounded transition-colors text-neutral-500" title="Maximize">
+<span class="material-symbols-outlined text-[14px]">crop_square</span>
+</button>
+<button class="p-1 hover:bg-red-500 hover:text-white rounded transition-colors text-neutral-500" title="Close">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</header>
+<!-- MAIN APPLICATION SHELL -->
+<div class="flex flex-1 overflow-hidden">
+<!-- LEFT SIDEBAR (~264px, Shared SideNavBar Component Execution) -->
+<aside class="bg-neutral-50 border-r border-neutral-200 flex flex-col justify-between h-full p-3 w-64 select-none shrink-0">
+<div class="flex flex-col gap-3">
+<!-- Sidebar Brand & Navigation Controls -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-[#0A0A0C] text-white flex items-center justify-center font-bold text-xs">A</div>
+<div>
+<div class="font-headline text-sm font-semibold text-neutral-950 tracking-tight leading-none">Antigravity</div>
+<div class="text-[10px] text-[#71717A] font-mono leading-tight">Usage v3</div>
+</div>
+</div>
+<div class="flex items-center gap-0.5 text-neutral-400">
+<button class="p-1 hover:text-neutral-900 rounded hover:bg-neutral-200 transition-colors">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+</button>
+<button class="p-1 hover:text-neutral-900 rounded hover:bg-neutral-200 transition-colors">
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1 hover:text-neutral-900 rounded hover:bg-neutral-200 transition-colors ml-1">
+<span class="material-symbols-outlined text-[16px]">search</span>
+</button>
+</div>
+</div>
+<!-- Rescan Sessions CTA Button -->
+<button class="flex items-center justify-between w-full bg-white hover:bg-neutral-100 border border-neutral-200/90 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 shadow-sm transition-all duration-150 active:scale-[0.99] group">
+<div class="flex items-center gap-1.5 font-medium">
+<span class="material-symbols-outlined text-[15px] text-neutral-600 group-hover:rotate-180 transition-transform duration-300">refresh</span>
+<span>Rescan Sessions</span>
+</div>
+<span class="text-[10px] font-mono text-[#71717A] bg-neutral-100 px-1.5 py-0.5 rounded">20:25</span>
+</button>
+<!-- Navigation Tabs Group -->
+<div class="mt-1">
+<div class="text-[10px] font-semibold text-[#828283] uppercase tracking-wider px-2 mb-1.5">Navigation</div>
+<nav class="flex flex-col gap-0.5">
+<a class="flex items-center gap-2.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-2.5 py-1.5 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-2.5 py-1.5 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-2.5 py-1.5 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Sessions &amp; Runs</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-2.5 py-1.5 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">folder_open</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-2.5 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-2.5 py-1.5 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+</nav>
+</div>
+<!-- Sources Section -->
+<div class="mt-2">
+<div class="text-[10px] font-semibold text-[#828283] uppercase tracking-wider px-2 mb-1">Sources</div>
+<div class="flex flex-col gap-0.5 text-xs">
+<div class="flex items-center justify-between px-2.5 py-1 rounded-md hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2 text-neutral-700">
+<span class="text-[9px] font-bold px-1 py-0.2 bg-[#3F3F46] text-white rounded">APP</span>
+<span class="text-neutral-800">Antigravity App</span>
+</div>
+<span class="font-mono text-[11px] text-neutral-400">6</span>
+</div>
+<div class="flex items-center justify-between px-2.5 py-1 rounded-md hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2 text-neutral-700">
+<span class="text-[9px] font-bold px-1 py-0.2 bg-[#9334E6] text-white rounded">CLI</span>
+<span class="text-neutral-800">Antigravity CLI</span>
+</div>
+<span class="font-mono text-[11px] text-neutral-400">114</span>
+</div>
+</div>
+</div>
+<!-- Recent Sessions Snippet -->
+<div class="mt-2">
+<div class="text-[10px] font-semibold text-[#828283] uppercase tracking-wider px-2 mb-1">Recent Sessions</div>
+<div class="flex flex-col gap-1 text-[11px] text-neutral-600 px-2 font-mono">
+<div class="truncate hover:text-neutral-950 cursor-pointer py-0.5">› run_20261115_0912 <span class="text-neutral-400 text-[10px]">#gemini-3</span></div>
+<div class="truncate hover:text-neutral-950 cursor-pointer py-0.5">› run_20261115_0804 <span class="text-neutral-400 text-[10px]">#flash-2</span></div>
+<div class="truncate hover:text-neutral-950 cursor-pointer py-0.5">› sync_daemon_v3 <span class="text-neutral-400 text-[10px]">#indexer</span></div>
+</div>
+</div>
+</div>
+<!-- Docked Footer Items: Active Settings Destination Tab -->
+<div class="border-t border-neutral-200/80 pt-2 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 rounded-lg px-3 py-2 text-xs font-normal transition-colors" href="#">
+<span class="material-symbols-outlined text-[17px]">terminal</span>
+<span>CLI Sync Terminal</span>
+</a>
+<!-- ACTIVE STATE: Settings -->
+<a aria-current="page" class="flex items-center gap-3 bg-white text-neutral-950 font-medium rounded-lg px-3 py-2 text-xs border border-neutral-200/80 shadow-sm" href="#">
+<span class="material-symbols-outlined text-[17px] text-[#0A0A0C]">settings</span>
+<span class="font-medium">Settings</span>
+<span class="ml-auto w-1.5 h-1.5 rounded-full bg-[#4285F4]"></span>
+</a>
+</div>
+</aside>
+<!-- MAIN SETTINGS CANVAS (White 16px radius panel inside #FAFAFA canvas) -->
+<main class="flex-1 p-3 overflow-hidden flex flex-col bg-[#FAFAFA]">
+<!-- Surface Shell: 16px radius, 1px border #E0E0E0 -->
+<section class="bg-white border border-[#E0E0E0] rounded-xl flex-1 flex flex-col overflow-hidden shadow-none">
+<!-- Header & Breadcrumbs Toolbar -->
+<header class="px-5 py-3 border-b border-[#E6E6E6] flex items-center justify-between shrink-0 bg-white">
+<div class="flex items-center gap-2 text-xs text-[#71717A]">
+<span class="text-[#0A0A0C] font-medium text-sm">Settings</span>
+<span>/</span>
+<span class="text-[#3F3F46]">Money &amp; Currencies</span>
+<span class="bg-[#F5F5F5] text-[#3E5270] font-mono text-[10px] px-1.5 py-0.5 rounded border border-[#E6E6E6]">v3-runtime</span>
+</div>
+<div class="flex items-center gap-3">
+<!-- Composer-style Search Filter Bar -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-neutral-400 text-[15px]">search</span>
+<input class="pl-8 pr-14 py-1 bg-white border border-[#E6E6E6] rounded-full text-xs placeholder-[#71717A] text-[#0A0A0C] w-72 focus:outline-none focus:ring-1 focus:ring-[#1A73E8] focus:border-[#1A73E8] shadow-sm transition-all" placeholder="Search settings..." type="text"/>
+<div class="absolute right-2 flex items-center gap-1">
+<kbd class="font-mono text-[9px] bg-[#F5F5F5] border border-[#D4D4D8] text-[#71717A] px-1 rounded">Ctrl+F</kbd>
+<kbd class="font-mono text-[9px] bg-[#F5F5F5] border border-[#D4D4D8] text-[#71717A] px-1 rounded">/</kbd>
+</div>
+</div>
+<!-- Toolbar Quick Action Icons -->
+<div class="flex items-center gap-1 border-l border-[#E6E6E6] pl-2 text-neutral-500">
+<button class="p-1 hover:bg-[#F5F5F5] rounded text-neutral-600 transition-colors" title="Settings Info">
+<span class="material-symbols-outlined text-[17px]">info</span>
+</button>
+<button class="p-1 hover:bg-[#F5F5F5] rounded text-neutral-600 transition-colors" title="View Options">
+<span class="material-symbols-outlined text-[17px]">tune</span>
+</button>
+<button class="p-1 hover:bg-[#F5F5F5] rounded text-neutral-600 transition-colors" title="More Options">
+<span class="material-symbols-outlined text-[17px]">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Two-Column Settings Layout Body -->
+<div class="flex flex-1 overflow-hidden">
+<!-- LEFT SUB-NAV COLUMN (~210px) -->
+<nav aria-label="Settings Categories" class="w-52 border-r border-[#E6E6E6] p-3 flex flex-col justify-between shrink-0 bg-[#FAFAFA]/50">
+<div>
+<div class="text-[10px] font-semibold text-[#828283] uppercase tracking-wider px-2 py-1 mb-1">Sections</div>
+<ul class="space-y-0.5 text-xs">
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] transition-colors" href="#sources">
+<span>Sources</span>
+</a>
+</li>
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] transition-colors" href="#pricing">
+<span>Pricing</span>
+</a>
+</li>
+<!-- ACTIVE SUBNAV ITEM: Money & Currencies -->
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white border border-[#F0F0F0] text-[#0A0A0C] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)]" href="#money">
+<span class="flex items-center gap-1.5 text-[#0A0A0C]">
+<span class="text-[#4285F4] font-mono font-bold">›</span>
+<span>Money</span>
+</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></span>
+</a>
+</li>
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] transition-colors" href="#display">
+<span>Display</span>
+</a>
+</li>
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] transition-colors" href="#refresh">
+<span>Refresh</span>
+</a>
+</li>
+<li>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] transition-colors" href="#privacy">
+<span>Privacy</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- About Section at Bottom of Subnav -->
+<div class="pt-2 border-t border-[#E6E6E6]">
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[#3F3F46] hover:bg-[#F5F5F5] text-xs transition-colors" href="#about">
+<span>About</span>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#71717A] px-1.5 py-0.2 rounded border border-[#E6E6E6]">v3.0.4</span>
+</a>
+</div>
+</nav>
+<!-- RIGHT COLUMN: Scrollable Cards Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-white">
+<!-- CARD 1: Money & Currencies -->
+<article class="border border-[#E6E6E6] rounded-xl p-5 bg-white space-y-5" id="money">
+<div class="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-sm font-semibold text-[#0A0A0C]">Money &amp; Currencies</h2>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#3E5270] px-2 py-0.5 rounded-full border border-[#E6E6E6]">fx &amp; tariffs</span>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Configure base currencies and simulated monthly plan rates.</p>
+</div>
+<span class="material-symbols-outlined text-[#71717A]">payments</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+<!-- Setting 1: Display Currency -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Display currency</label>
+<div class="inline-flex p-0.5 bg-[#F5F5F5] border border-[#E6E6E6] rounded-lg">
+<button class="px-3 py-1 bg-white text-[#0A0A0C] font-medium rounded-md shadow-xs border border-[#E0E0E0] text-xs">INR (₹)</button>
+<button class="px-3 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-xs transition-colors">USD ($)</button>
+</div>
+<p class="text-[11px] text-[#71717A]">Base representation currency for all card analytics.</p>
+</div>
+<!-- Setting 2: USD -> INR conversion rate with Validation Error State -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">USD → INR conversion rate</label>
+<div class="relative w-48">
+<span class="absolute left-2.5 top-1.5 text-xs font-mono text-[#71717A]">₹</span>
+<input class="w-full pl-6 pr-3 py-1 font-mono text-xs border rounded-md focus:outline-none text-[#0A0A0C] bg-white border-[#D93025] focus:border-[#D93025] focus:ring-1 focus:ring-[#D93025]" type="text" value="-5"/>
+</div>
+<div class="flex items-center gap-1 text-[11px] text-[#D93025] font-medium mt-1">
+<span class="material-symbols-outlined text-[13px] text-[#D93025]">error</span>
+<span>Enter a number greater than 0.</span>
+</div>
+<p class="text-[11px] text-[#71717A]">Used only for display rate conversions across historical benchmarks.</p>
+</div>
+<!-- Setting 3: Monthly plan amount -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Monthly plan amount</label>
+<div class="relative w-44">
+<input class="w-full px-3 py-1 font-mono text-xs border border-[#E6E6E6] rounded-md focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8] text-[#0A0A0C] bg-white" type="text" value="₹ 1,800"/>
+</div>
+<p class="text-[11px] text-[#71717A]">What you actually pay. Used only for the plan comparison view.</p>
+</div>
+<!-- Setting 4: Billing cycle period -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between w-56">
+<label class="font-medium text-[#3F3F46]">Billing cycle period</label>
+<button class="text-[10px] text-[#1A73E8] hover:underline">Reset default</button>
+</div>
+<div class="flex items-center gap-2">
+<select class="w-44 py-1 px-2.5 text-xs border border-[#E6E6E6] rounded-md bg-white focus:border-[#1A73E8] text-[#0A0A0C]">
+<option selected="">30 days</option>
+<option>Calendar month (1st to 1st)</option>
+<option>Bi-weekly (14 days)</option>
+</select>
+</div>
+<p class="text-[11px] text-[#71717A]">Defines aggregation window for rolling totals.</p>
+</div>
+</div>
+</article>
+<!-- CARD 2: Display & Theme -->
+<article class="border border-[#E6E6E6] rounded-xl p-5 bg-white space-y-5" id="display">
+<div class="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-sm font-semibold text-[#0A0A0C]">Display &amp; Theme</h2>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#3E5270] px-2 py-0.5 rounded-full border border-[#E6E6E6]">appearance</span>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Manage color schemes, density, numeric formats, and motion preferences.</p>
+</div>
+<span class="material-symbols-outlined text-[#71717A]">palette</span>
+</div>
+<div class="space-y-5 text-xs">
+<!-- Setting 1: Theme mode (CLI style list) -->
+<div>
+<label class="block font-medium text-[#3F3F46] mb-2">Theme mode</label>
+<div class="bg-[#FAFAFA] border border-[#E6E6E6] rounded-lg p-3 w-full max-w-md font-mono space-y-1.5">
+<div class="flex items-center gap-2 text-[#0A0A0C] font-medium">
+<span class="text-[#4285F4] font-bold">›</span>
+<span class="bg-[#E8F0FE] text-[#1967D2] px-1.5 py-0.5 rounded text-[11px]">light (current)</span>
+<span class="text-[11px] text-[#71717A] font-normal">— 2.0 clean studio paper</span>
+</div>
+<div class="flex items-center gap-2 text-[#71717A] hover:text-[#0A0A0C] cursor-pointer pl-3">
+<span>dark</span>
+<span class="text-[11px] text-[#A1A1AA] font-normal">— carbon midnight</span>
+</div>
+<div class="flex items-center gap-2 text-[#71717A] hover:text-[#0A0A0C] cursor-pointer pl-3">
+<span>follow Windows</span>
+<span class="text-[11px] text-[#A1A1AA] font-normal">— system sync</span>
+</div>
+</div>
+</div>
+<!-- 2-col Settings Grid for formatting controls -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+<!-- Interface density -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Interface density</label>
+<div class="inline-flex p-0.5 bg-[#F5F5F5] border border-[#E6E6E6] rounded-lg">
+<button class="px-3 py-1 bg-white text-[#0A0A0C] font-medium rounded-md shadow-xs border border-[#E0E0E0] text-xs">Comfortable</button>
+<button class="px-3 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-xs transition-colors">Compact</button>
+</div>
+</div>
+<!-- Number format -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Number format</label>
+<div class="inline-flex p-0.5 bg-[#F5F5F5] border border-[#E6E6E6] rounded-lg font-mono">
+<button class="px-3 py-1 bg-white text-[#0A0A0C] font-medium rounded-md shadow-xs border border-[#E0E0E0] text-[11px]">Compact (307.7M)</button>
+<button class="px-3 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-[11px] transition-colors">Full (307,693,417)</button>
+</div>
+</div>
+<!-- Week starts on -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Week starts on</label>
+<div class="inline-flex p-0.5 bg-[#F5F5F5] border border-[#E6E6E6] rounded-lg">
+<button class="px-3 py-1 bg-white text-[#0A0A0C] font-medium rounded-md shadow-xs border border-[#E0E0E0] text-xs">Monday</button>
+<button class="px-3 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-xs transition-colors">Sunday</button>
+</div>
+</div>
+<!-- Reduce motion -->
+<div class="space-y-1.5">
+<label class="block font-medium text-[#3F3F46]">Reduce motion</label>
+<div class="inline-flex p-0.5 bg-[#F5F5F5] border border-[#E6E6E6] rounded-lg">
+<button class="px-2.5 py-1 bg-white text-[#0A0A0C] font-medium rounded-md shadow-xs border border-[#E0E0E0] text-xs">Follow Windows</button>
+<button class="px-2.5 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-xs transition-colors">On</button>
+<button class="px-2.5 py-1 text-[#71717A] hover:text-[#0A0A0C] font-normal text-xs transition-colors">Off</button>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- CARD 3: Refresh & Engine -->
+<article class="border border-[#E6E6E6] rounded-xl p-5 bg-white space-y-5" id="refresh">
+<div class="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-sm font-semibold text-[#0A0A0C]">Refresh &amp; Engine</h2>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#3E5270] px-2 py-0.5 rounded-full border border-[#E6E6E6]">watcher</span>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Configure background session scanning and file watch daemon.</p>
+</div>
+<span class="material-symbols-outlined text-[#71717A]">sync</span>
+</div>
+<div class="space-y-4 text-xs">
+<!-- Setting 1: Rescan automatically -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-[#FAFAFA] rounded-lg border border-[#F0F0F0]">
+<div class="space-y-0.5">
+<div class="flex items-center gap-2">
+<span class="font-medium text-[#0A0A0C]">Rescan automatically</span>
+<span class="text-[10px] font-mono text-[#188038] bg-[#E6F4EA] px-1.5 py-0.2 rounded font-medium">DAEMON ACTIVE</span>
+</div>
+<p class="text-[11px] text-[#71717A]">Periodically scan active local session manifests.</p>
+</div>
+<div class="inline-flex p-0.5 bg-white border border-[#E6E6E6] rounded-lg font-mono">
+<button class="px-2.5 py-1 text-[#71717A] hover:text-[#0A0A0C] text-[11px]">1 min</button>
+<button class="px-2.5 py-1 bg-[#0A0A0C] text-white font-medium rounded-md text-[11px]">5 min</button>
+<button class="px-2.5 py-1 text-[#71717A] hover:text-[#0A0A0C] text-[11px]">15 min</button>
+<button class="px-2.5 py-1 text-[#71717A] hover:text-[#0A0A0C] text-[11px]">Manual only</button>
+</div>
+</div>
+<!-- Setting 2: Watch folders toggle -->
+<div class="flex items-center justify-between p-3 bg-white rounded-lg border border-[#E6E6E6]">
+<div class="space-y-0.5">
+<span class="font-medium text-[#0A0A0C]">Watch folders for new sessions</span>
+<p class="text-[11px] text-[#71717A]">Updates as soon as Antigravity writes a new log.</p>
+</div>
+<!-- Switch Component (Active/ON) -->
+<div class="w-9 h-5 bg-[#0A0A0C] rounded-full p-0.5 cursor-pointer flex items-center justify-end">
+<div class="w-4 h-4 bg-white rounded-full shadow-xs"></div>
+</div>
+</div>
+<!-- Setting 3: Cache management action pills -->
+<div class="pt-2 flex items-center justify-between">
+<div>
+<span class="font-medium text-[#3F3F46]">Cache management</span>
+<p class="text-[11px] text-[#71717A]">Reset runtime state in case of session schema drift.</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 text-xs bg-[#F5F5F5] hover:bg-[#EAEAEA] border border-[#E6E6E6] text-[#3F3F46] rounded-md font-medium transition-colors">
+                      Clear cached scan
+                    </button>
+<button class="px-3 py-1.5 text-xs bg-white hover:bg-neutral-100 border border-[#E6E6E6] text-[#0A0A0C] rounded-md font-medium transition-colors">
+                      Reindex SQLite DB
+                    </button>
+</div>
+</div>
+</div>
+</article>
+<!-- CARD 4: Privacy & Telemetry -->
+<article class="border border-[#E6E6E6] rounded-xl p-5 bg-white space-y-4" id="privacy">
+<div class="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-sm font-semibold text-[#0A0A0C]">Privacy &amp; Telemetry</h2>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-2 py-0.5 rounded-full border border-[#CEEAD6] font-medium">local-only · zero upload</span>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Security architecture guarantees and sandbox permissions.</p>
+</div>
+<span class="material-symbols-outlined text-[#188038]">verified_user</span>
+</div>
+<!-- High-Key Callout Box -->
+<div class="bg-[#FAFAFA] border border-[#E6E6E6] rounded-lg p-3.5 space-y-3">
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-[#188038] text-[20px] shrink-0 mt-0.5">shield</span>
+<div class="text-xs">
+<strong class="font-semibold text-[#0A0A0C]">Reads local files only.</strong>
+<span class="text-[#3F3F46]"> Never uploads, never sends telemetry, never writes to Antigravity's folders.</span>
+</div>
+</div>
+<div class="space-y-1.5 pt-1">
+<div class="text-[11px] font-medium text-[#71717A]">Active Read Paths:</div>
+<div class="flex flex-wrap gap-2 text-[11px] font-mono">
+<span class="bg-[#F5F5F5] border border-[#E6E6E6] text-[#3E5270] px-2 py-0.5 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+                      ~/.gemini/antigravity/brain
+                    </span>
+<span class="bg-[#F5F5F5] border border-[#E6E6E6] text-[#3E5270] px-2 py-0.5 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+                      ~/.gemini/antigravity-cli/brain
+                    </span>
+<span class="bg-[#F5F5F5] border border-[#E6E6E6] text-[#3E5270] px-2 py-0.5 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></span>
+                      conversation_summaries.db (readonly)
+                    </span>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-1">
+<a class="inline-flex items-center gap-1 text-xs text-[#1A73E8] hover:underline font-medium" href="#">
+<span>Open app data folder</span>
+<span class="material-symbols-outlined text-[13px]">open_in_new</span>
+</a>
+</div>
+</article>
+<!-- CARD 5: About & Engine Information -->
+<article class="border border-[#E6E6E6] rounded-xl p-5 bg-white space-y-4" id="about">
+<div class="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="text-sm font-semibold text-[#0A0A0C]">About &amp; Engine Information</h2>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#3E5270] px-2 py-0.5 rounded-full border border-[#E6E6E6]">build info</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[#71717A]">terminal</span>
+</div>
+<div class="space-y-3 text-xs">
+<div class="flex items-center justify-between p-3 bg-[#FAFAFA] rounded-lg border border-[#E6E6E6]">
+<div>
+<div class="font-semibold text-[#0A0A0C]">Antigravity Usage · Version 0.1.0 (v3-desktop)</div>
+<div class="text-[11px] text-[#71717A] font-mono mt-0.5">Build 15 Nov 2026 · Native Windows runtime</div>
+</div>
+<button class="px-3 py-1.5 bg-[#0A0A0C] text-white rounded-lg text-xs font-medium hover:bg-neutral-800 transition-colors shadow-sm">
+                    Check for updates
+                  </button>
+</div>
+<div class="flex items-center justify-between px-1 text-[11px] text-[#71717A]">
+<div>Detected runtimes: <span class="font-mono text-[#0A0A0C]">Antigravity App 44.9.1</span> · <span class="font-mono text-[#0A0A0C]">Antigravity CLI 1.5.4</span></div>
+<div class="flex items-center gap-3">
+<a class="text-[#1A73E8] hover:underline" href="#">View logs</a>
+<span>·</span>
+<a class="text-[#1A73E8] hover:underline" href="#">Open diagnostics folder</a>
+</div>
+</div>
+</div>
+</article>
+</div>
+</div>
+<!-- FOOTER BAR: CLI-Style Mono Keyboard Hints & Config Autosave -->
+<footer class="h-8 border-t border-[#E6E6E6] bg-[#FAFAFA] px-4 flex items-center justify-between text-[11px] font-mono shrink-0 select-none">
+<div class="flex items-center gap-4 text-[#71717A]">
+<div class="flex items-center gap-1.5">
+<span class="text-[#4285F4] font-semibold">↑/↓</span>
+<span>Navigate</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="text-[#4285F4] font-semibold">Enter</span>
+<span>Edit</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="text-[#4285F4] font-semibold">Esc</span>
+<span>Back</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-[#188038] font-semibold">CONFIG AUTO-SAVED</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038] animate-pulse"></span>
+</div>
+</footer>
+</section>
+</main>
+</div>
+<!-- FLOATING TOAST NOTIFICATION: Saved -->
+<aside aria-live="polite" class="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300">
+<div class="bg-white rounded-xl border border-[#E6E6E6] px-4 py-2 flex items-center gap-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+<span class="material-symbols-outlined text-[#188038] text-[18px]">check_circle</span>
+<span class="text-xs font-medium text-neutral-900 tracking-tight">Saved</span>
+</div>
+</aside>
+<!-- BOTTOM WINDOW STATUS BAR -->
+<footer class="h-6 bg-[#FAFAFA] border-t border-neutral-200 px-3 flex items-center justify-between text-[10px] font-mono text-[#71717A] shrink-0 select-none">
+<div class="flex items-center gap-2">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#188038]"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<div class="flex items-center gap-3">
+<span>UTC+5:30</span>
+<span>|</span>
+<span>Light Theme</span>
+<span>|</span>
+<span class="font-medium text-neutral-800">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</body></html>

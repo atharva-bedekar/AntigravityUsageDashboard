@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — Overview (Dark)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            win: {
+              canvas: "#131313",
+              card: "#1F1F1F",
+              border: "rgba(255, 255, 255, 0.16)",
+              hover: "rgba(255, 255, 255, 0.06)",
+              text: "#E3E3E3",
+              muted: "#A1A1AA",
+            },
+            data: {
+              new: "#8AB4F8",
+              cached: "#3C5A8A",
+              output: "#FCAD70",
+              cli: "#C58AF9",
+              app: "#A1A1AA"
+            }
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "Cascadia Mono", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-[#131313] text-[#E3E3E3] font-body antialiased overflow-hidden select-none h-screen w-screen flex flex-col">
+<!-- ================= TOP WINDOW APP SHELL & CAPTION BAR ================= -->
+<header class="flex items-center justify-between w-full h-8 px-3 bg-[#131313] border-b border-win-border text-xs z-50 shrink-0">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded bg-white text-[#131313] flex items-center justify-center font-bold text-[10px] leading-none">A</div>
+<span class="text-xs font-medium text-[#E3E3E3] tracking-wide">Antigravity Usage</span>
+</div>
+<nav class="hidden sm:flex items-center gap-3 text-xs text-[#A1A1AA]">
+<button class="hover:text-white transition-colors duration-150">Usage</button>
+<button class="hover:text-white transition-colors duration-150">View</button>
+<button class="hover:text-white transition-colors duration-150">Window</button>
+<button class="hover:text-white transition-colors duration-150">Help</button>
+</nav>
+</div>
+<!-- Window Control Buttons (Windows 11 Native Aesthetic) -->
+<div class="flex items-center h-full -mr-3">
+<button class="h-8 w-11 flex items-center justify-center text-[#A1A1AA] hover:bg-white/10 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[15px]" data-icon="minimize">minimize</span>
+</button>
+<button class="h-8 w-11 flex items-center justify-center text-[#A1A1AA] hover:bg-white/10 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[13px]" data-icon="crop_square">crop_square</span>
+</button>
+<button class="h-8 w-11 flex items-center justify-center text-[#A1A1AA] hover:bg-red-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[15px]" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- ================= MAIN DESKTOP WORKSPACE ================= -->
+<div class="flex-1 flex overflow-hidden">
+<!-- LEFT SIDEBAR -->
+<aside class="w-72 bg-[#131313] border-r border-win-border flex flex-col justify-between shrink-0 p-3 select-none">
+<div class="flex flex-col gap-3 overflow-hidden">
+<!-- Sidebar Navigation Controls -->
+<div class="flex items-center justify-between px-1 text-[#A1A1AA]">
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-white/5 hover:text-white transition-colors" title="Toggle Sidebar">
+<span class="material-symbols-outlined text-base" data-icon="dock_to_right">dock_to_right</span>
+</button>
+<div class="flex items-center ml-1 text-white/40">
+<button class="p-1 hover:text-white transition-colors" title="Back">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
+</button>
+<button class="p-1 hover:text-white transition-colors" title="Forward">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<button class="p-1 rounded hover:bg-white/5 hover:text-white transition-colors" title="Search Sessions (Ctrl+K)">
+<span class="material-symbols-outlined text-base" data-icon="search">search</span>
+</button>
+</div>
+<!-- Rescan Control Button -->
+<button class="flex items-center justify-between w-full px-3 py-2 bg-[#1F1F1F] hover:bg-white/10 border border-win-border rounded-lg text-xs font-medium text-[#E3E3E3] transition-all active:scale-[0.99] shadow-sm">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-[#8AB4F8]" data-icon="refresh">refresh</span>
+            Rescan Sessions
+          </span>
+<span class="text-[11px] font-mono text-[#A1A1AA] bg-black/40 px-1.5 py-0.5 rounded border border-white/5">20:25</span>
+</button>
+<!-- Primary Navigation List -->
+<nav class="flex flex-col gap-0.5 mt-1">
+<!-- Active: Overview -->
+<a class="flex items-center gap-2.5 bg-[#1F1F1F] text-white font-medium rounded-[10px] px-3 py-2 border border-win-border shadow-sm text-sm" href="#">
+<span class="material-symbols-outlined text-base text-[#8AB4F8]" data-icon="dashboard">dashboard</span>
+            Overview
+          </a>
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-[#E3E3E3] rounded-[10px] px-3 py-2 text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="history">history</span>
+            Sessions
+          </a>
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-[#E3E3E3] rounded-[10px] px-3 py-2 text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="folder_open">folder_open</span>
+            Projects
+          </a>
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-[#E3E3E3] rounded-[10px] px-3 py-2 text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="payments">payments</span>
+            Costs
+          </a>
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-[#E3E3E3] rounded-[10px] px-3 py-2 text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="database">database</span>
+            Data Sources
+          </a>
+</nav>
+<div class="h-px bg-win-border my-1"></div>
+<!-- Section: SOURCES -->
+<div class="flex flex-col gap-1">
+<div class="px-2 text-[11px] font-semibold text-[#828283] tracking-wider uppercase">SOURCES</div>
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-xs text-[#E3E3E3] transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-neutral-700 text-neutral-200">APP</span>
+<span class="truncate">Antigravity App</span>
+</div>
+<span class="font-mono text-[11px] text-[#A1A1AA] bg-black/40 px-1.5 py-0.5 rounded">6</span>
+</div>
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-xs text-[#E3E3E3] transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9] border border-[#C58AF9]/30">CLI</span>
+<span class="truncate">Antigravity CLI</span>
+</div>
+<span class="font-mono text-[11px] text-[#A1A1AA] bg-black/40 px-1.5 py-0.5 rounded">114</span>
+</div>
+</div>
+<div class="h-px bg-win-border my-1"></div>
+<!-- Section: RECENT SESSIONS -->
+<div class="flex flex-col gap-1 overflow-y-auto custom-scrollbar flex-1 pr-1 max-h-48">
+<div class="flex items-center justify-between px-2 text-[11px] font-semibold text-[#828283] tracking-wider uppercase">
+<span>RECENT SESSIONS</span>
+<span class="font-mono text-[10px] text-neutral-500 lowercase font-normal">120 total</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-white/5 text-xs text-[#E3E3E3] group cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-[15px] text-[#8AB4F8]" data-icon="folder">folder</span>
+<span class="truncate font-mono text-[11px]">AntigravityUsageDashboard</span>
+</div>
+<span class="text-[10px] text-[#6C6C6D] shrink-0 font-mono">3m</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-white/5 text-xs text-[#A1A1AA] hover:text-[#E3E3E3] group cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-[15px] text-neutral-500" data-icon="terminal">terminal</span>
+<span class="truncate font-mono text-[11px]">Rust Windows App UI De...</span>
+</div>
+<span class="text-[10px] text-[#6C6C6D] shrink-0 font-mono">1h</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-white/5 text-xs text-[#A1A1AA] hover:text-[#E3E3E3] group cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-[15px] text-neutral-500" data-icon="terminal">terminal</span>
+<span class="truncate font-mono text-[11px]">Antigravity Usage Dashb...</span>
+</div>
+<span class="text-[10px] text-[#6C6C6D] shrink-0 font-mono">2h</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-white/5 text-xs text-[#A1A1AA] hover:text-[#E3E3E3] group cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-[15px] text-neutral-500" data-icon="folder">folder</span>
+<span class="truncate font-mono text-[11px]">SLMRetraining</span>
+</div>
+<span class="text-[10px] text-[#6C6C6D] shrink-0 font-mono">5d</span>
+</div>
+<div class="flex items-center justify-between px-2 py-1 rounded hover:bg-white/5 text-xs text-[#A1A1AA] hover:text-[#E3E3E3] group cursor-pointer">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-[15px] text-neutral-500" data-icon="folder">folder</span>
+<span class="truncate font-mono text-[11px]">Learning</span>
+</div>
+<span class="text-[10px] text-[#6C6C6D] shrink-0 font-mono">12d</span>
+</div>
+</div>
+</div>
+<!-- Footer Pinned Actions -->
+<div class="pt-2 border-t border-win-border flex flex-col gap-1 shrink-0">
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-lg px-2.5 py-1.5 text-xs transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="terminal">terminal</span>
+          CLI Sync Terminal
+        </a>
+<a class="flex items-center gap-2.5 text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-lg px-2.5 py-1.5 text-xs transition-colors" href="#">
+<span class="material-symbols-outlined text-base" data-icon="settings">settings</span>
+          Settings
+        </a>
+</div>
+</aside>
+<!-- MAIN CONTENT VIEW CANVAS -->
+<main class="flex-1 bg-[#131313] p-3 pl-2 overflow-hidden flex flex-col">
+<!-- Outer Content Panel: rounded-2xl, 1px border -->
+<div class="flex-1 bg-[#1F1F1F] rounded-2xl border border-win-border flex flex-col overflow-hidden shadow-2xl">
+<!-- Breadcrumbs & Quick Canvas Toolbar -->
+<div class="h-12 border-b border-win-border px-6 flex items-center justify-between shrink-0 bg-[#1F1F1F]/60 backdrop-blur-md">
+<div class="flex items-center gap-2 text-xs">
+<span class="text-[#A1A1AA]">Overview</span>
+<span class="text-neutral-600">/</span>
+<span class="text-[#E3E3E3] font-medium">Executive Dashboard</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-white/5 rounded-md transition-colors" title="Toggle Panels">
+<span class="material-symbols-outlined text-base" data-icon="splitscreen">splitscreen</span>
+</button>
+<button class="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-white/5 rounded-md transition-colors" title="More Options">
+<span class="material-symbols-outlined text-base" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Dashboard Content Area -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+<!-- COMPOSER-STYLE FILTER BAR (20px radius pill bar) -->
+<div class="flex flex-wrap items-center justify-between gap-3 bg-[#1F1F1F] px-4 py-2 rounded-full border border-win-border shadow-sm">
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#E3E3E3] border border-white/5 transition-colors">
+<span>Last 30 days</span>
+<span class="material-symbols-outlined text-[14px] text-[#A1A1AA]" data-icon="expand_more">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#E3E3E3] border border-white/5 transition-colors">
+<span>All sources</span>
+<span class="material-symbols-outlined text-[14px] text-[#A1A1AA]" data-icon="expand_more">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#E3E3E3] border border-white/5 transition-colors">
+<span>All projects</span>
+<span class="material-symbols-outlined text-[14px] text-[#A1A1AA]" data-icon="expand_more">expand_more</span>
+</button>
+<span class="text-neutral-600">|</span>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#8AB4F8] border border-white/5 transition-colors">
+<span class="font-mono">≈ Gemini 3.8 Flash pricing</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="expand_more">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#E3E3E3] border border-white/5 transition-colors">
+<span class="font-mono">₹ INR</span>
+<span class="material-symbols-outlined text-[14px] text-[#A1A1AA]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+<span>Live Synced</span>
+</div>
+</div>
+</div>
+<!-- EXECUTIVE SUMMARY HERO SENTENCE -->
+<div class="bg-gradient-to-r from-white/[0.03] to-transparent p-5 rounded-xl border border-win-border">
+<h1 class="text-[23px] leading-[34px] font-normal text-[#E3E3E3] max-w-5xl">
+              From 17 Oct to 15 Nov you used <span class="font-medium text-white font-mono">307.7M</span> tokens in <span class="font-medium text-white font-mono">120</span> sessions. <span class="text-[#8AB4F8] font-medium font-mono">90%</span> were cached re-reads. At Gemini 3.8 Flash prices that's about <span class="font-medium text-emerald-400 font-mono">≈ ₹4,707</span>.
+            </h1>
+<p class="text-xs text-[#A1A1AA] mt-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-neutral-500" data-icon="info">info</span>
+              CLI 17–24 Oct · App 28 Oct–15 Nov · no activity 25–27 Oct.
+            </p>
+</div>
+<!-- 4 KPI CARDS (Bento Grid) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- KPI 1: New Input -->
+<div class="bg-[#1F1F1F] rounded-xl p-4 border border-win-border flex flex-col justify-between hover:border-white/30 transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs text-[#A1A1AA] mb-2">
+<span class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#8AB4F8]"></span>
+                    New input
+                  </span>
+<span class="font-mono text-[11px] text-neutral-400">9.2% vol</span>
+</div>
+<div class="text-[28px] font-mono font-medium text-white tracking-tight">28.30M</div>
+<div class="text-xs text-[#A1A1AA] mt-1">Fresh text sent to the model</div>
+</div>
+<div class="mt-4 pt-3 border-t border-win-border flex items-center justify-between text-[11px] font-mono text-[#A1A1AA]">
+<div class="flex items-center gap-1.5 w-full">
+<div class="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden flex">
+<div class="bg-[#C58AF9]" style="width: 91%" title="CLI 91%"></div>
+<div class="bg-[#A1A1AA]" style="width: 9%" title="App 9%"></div>
+</div>
+<span class="text-[10px] shrink-0">CLI 91% · App 9%</span>
+</div>
+</div>
+</div>
+<!-- KPI 2: Cached Input -->
+<div class="bg-[#1F1F1F] rounded-xl p-4 border border-win-border flex flex-col justify-between hover:border-white/30 transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs text-[#A1A1AA] mb-2">
+<span class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#3C5A8A]"></span>
+                    Cached input
+                  </span>
+<span class="font-mono text-[11px] text-[#8AB4F8]">89.8% vol</span>
+</div>
+<div class="text-[28px] font-mono font-medium text-white tracking-tight">276.31M</div>
+<div class="text-xs text-[#A1A1AA] mt-1">Context re-read from cache, ~10× cheaper</div>
+</div>
+<div class="mt-4 pt-3 border-t border-win-border flex items-center justify-between text-[11px] font-mono text-[#A1A1AA]">
+<div class="flex items-center gap-1.5 w-full">
+<div class="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden flex">
+<div class="bg-[#C58AF9]" style="width: 91%" title="CLI 91%"></div>
+<div class="bg-[#A1A1AA]" style="width: 9%" title="App 9%"></div>
+</div>
+<span class="text-[10px] shrink-0">CLI 91% · App 9%</span>
+</div>
+</div>
+</div>
+<!-- KPI 3: Output -->
+<div class="bg-[#1F1F1F] rounded-xl p-4 border border-win-border flex flex-col justify-between hover:border-white/30 transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs text-[#A1A1AA] mb-2">
+<span class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#FCAD70]"></span>
+                    Output
+                  </span>
+<span class="font-mono text-[11px] text-neutral-400">1.0% vol</span>
+</div>
+<div class="text-[28px] font-mono font-medium text-white tracking-tight">3.08M</div>
+<div class="text-xs text-[#A1A1AA] mt-1">Text, code and reasoning written</div>
+</div>
+<div class="mt-4 pt-3 border-t border-win-border flex items-center justify-between text-[11px] font-mono text-[#A1A1AA]">
+<div class="flex items-center gap-1.5 w-full">
+<div class="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden flex">
+<div class="bg-[#C58AF9]" style="width: 88%" title="CLI 88%"></div>
+<div class="bg-[#A1A1AA]" style="width: 12%" title="App 12%"></div>
+</div>
+<span class="text-[10px] shrink-0">CLI 88% · App 12%</span>
+</div>
+</div>
+</div>
+<!-- KPI 4: Estimated Cost -->
+<div class="bg-[#1F1F1F] rounded-xl p-4 border border-win-border flex flex-col justify-between hover:border-white/30 transition-colors">
+<div>
+<div class="flex items-center justify-between text-xs text-[#A1A1AA] mb-2">
+<span class="flex items-center gap-1.5 text-emerald-400 font-medium">
+<span class="material-symbols-outlined text-[15px]" data-icon="attach_money">attach_money</span>
+                    Estimated cost
+                  </span>
+<span class="font-mono text-[10px] bg-emerald-500/10 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20">INR</span>
+</div>
+<div class="text-[28px] font-mono font-medium text-white tracking-tight">≈ ₹4,707</div>
+<div class="text-xs text-[#A1A1AA] mt-1">If billed at API list prices</div>
+</div>
+<div class="mt-4 pt-3 border-t border-win-border">
+<span class="inline-flex items-center gap-1 font-mono text-[11px] text-[#A1A1AA] bg-black/30 px-2 py-0.5 rounded border border-white/5">
+                  ≈ $53.49 · Gemini 3.8 Flash
+                </span>
+</div>
+</div>
+</div>
+<!-- WHERE TOKENS GO VS WHERE MONEY GOES -->
+<div class="bg-[#1F1F1F] rounded-xl p-5 border border-win-border">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+<div>
+<h3 class="text-sm font-medium text-white">Where the tokens go vs where the money goes</h3>
+<p class="text-xs text-[#A1A1AA] mt-0.5">High volume cached tokens drastically reduce billing burden</p>
+</div>
+<!-- Legends -->
+<div class="flex items-center gap-4 text-xs font-mono">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded bg-[#3C5A8A]"></span>
+<span class="text-[#A1A1AA]">Cached input</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded bg-[#8AB4F8]"></span>
+<span class="text-[#A1A1AA]">New input</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded bg-[#FCAD70]"></span>
+<span class="text-[#A1A1AA]">Output</span>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Bar 1: Volume -->
+<div>
+<div class="flex justify-between text-xs mb-1.5 font-mono">
+<span class="text-[#A1A1AA]">Token Volume Distribution <span class="text-white font-medium">(307.7M Total)</span></span>
+<span class="text-white">89.8% Cached · 9.2% New · 1.0% Out</span>
+</div>
+<div class="h-6 w-full bg-neutral-900 rounded-lg overflow-hidden flex border border-white/5">
+<div class="bg-[#3C5A8A] hover:opacity-90 flex items-center justify-start pl-2 text-[10px] font-mono font-medium text-white transition-opacity" style="width: 89.8%">
+                    Cached 89.8% (276.3M)
+                  </div>
+<div class="bg-[#8AB4F8] hover:opacity-90 flex items-center justify-center text-[10px] font-mono font-bold text-neutral-900 transition-opacity" style="width: 9.2%" title="New 9.2% (28.3M)">
+                    9.2%
+                  </div>
+<div class="bg-[#FCAD70] hover:opacity-90 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-900 transition-opacity" style="width: 1.0%" title="Output 1.0% (3.08M)">
+</div>
+</div>
+</div>
+<!-- Bar 2: Cost -->
+<div>
+<div class="flex justify-between text-xs mb-1.5 font-mono">
+<span class="text-[#A1A1AA]">Cost Distribution <span class="text-white font-medium">(≈ ₹4,707 Estimated)</span></span>
+<span class="text-white">39.7% New · 38.7% Cached · 21.6% Out</span>
+</div>
+<div class="h-6 w-full bg-neutral-900 rounded-lg overflow-hidden flex border border-white/5">
+<div class="bg-[#8AB4F8] hover:opacity-90 flex items-center justify-center text-[10px] font-mono font-bold text-neutral-900 transition-opacity" style="width: 39.7%">
+                    New input 39.7% (₹1,869)
+                  </div>
+<div class="bg-[#3C5A8A] hover:opacity-90 flex items-center justify-center text-[10px] font-mono font-medium text-white transition-opacity" style="width: 38.7%">
+                    Cached 38.7% (₹1,821)
+                  </div>
+<div class="bg-[#FCAD70] hover:opacity-90 flex items-center justify-center text-[10px] font-mono font-bold text-neutral-900 transition-opacity" style="width: 21.6%">
+                    Output 21.6% (₹1,017)
+                  </div>
+</div>
+</div>
+</div>
+<!-- Callout note -->
+<div class="mt-4 p-2.5 rounded-lg bg-white/[0.02] border border-white/5 flex items-center gap-2.5 text-xs text-[#A1A1AA]">
+<span class="material-symbols-outlined text-[#8AB4F8] text-sm shrink-0" data-icon="lightbulb">lightbulb</span>
+<span><strong class="text-[#E3E3E3]">Insight:</strong> Cached input represents <span class="text-[#8AB4F8] font-mono">~90%</span> of your total token payload, but accounts for under <span class="text-[#8AB4F8] font-mono">40%</span> of API expenditures. Output is tiny (&lt;1%) but carries premium unit pricing.</span>
+</div>
+</div>
+<!-- DAILY USAGE STACKED CHART -->
+<div class="bg-[#1F1F1F] rounded-xl p-5 border border-win-border">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+<div>
+<h3 class="text-sm font-medium text-white">Daily usage</h3>
+<p class="text-xs text-[#A1A1AA] mt-0.5">Aggregated token consumption per calendar day</p>
+</div>
+<!-- Segmented Toggle -->
+<div class="flex items-center gap-2 text-xs">
+<span class="text-[#A1A1AA]">Colour by:</span>
+<div class="flex p-0.5 bg-black/40 rounded-lg border border-win-border">
+<button class="px-2.5 py-1 rounded bg-[#1F1F1F] text-white font-medium border border-white/10 shadow-sm text-xs">Token type</button>
+<button class="px-2.5 py-1 rounded text-[#A1A1AA] hover:text-white transition-colors text-xs">Source</button>
+</div>
+</div>
+</div>
+<!-- Rich SVG Stacked Bar Chart Visualization -->
+<div class="w-full h-64 relative flex">
+<!-- Y-Axis Scale -->
+<div class="flex flex-col justify-between text-[11px] font-mono text-[#A1A1AA] pr-3 select-none pb-6 h-full text-right w-10">
+<span>40M</span>
+<span>30M</span>
+<span>20M</span>
+<span>10M</span>
+<span>0</span>
+</div>
+<!-- Main Graph Container with Gridlines -->
+<div class="flex-1 h-full relative flex flex-col justify-between pb-6">
+<!-- Grid Horizontal Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
+<div class="w-full border-b border-white/5"></div>
+<div class="w-full border-b border-white/5"></div>
+<div class="w-full border-b border-white/5"></div>
+<div class="w-full border-b border-white/5"></div>
+<div class="w-full border-b border-white/10"></div>
+</div>
+<!-- Vertical Milestone Divider: CLI -> App Transition -->
+<div class="absolute left-[34%] top-0 bottom-6 border-l border-dashed border-[#C58AF9]/50 flex flex-col justify-start z-10 pointer-events-none">
+<span class="text-[9px] font-mono bg-[#1F1F1F] text-[#C58AF9] border border-[#C58AF9]/40 px-1.5 py-0.5 rounded -translate-x-1/2 -mt-2.5 whitespace-nowrap shadow-md">
+                    CLI → App Transition
+                  </span>
+</div>
+<!-- Daily Stacked Columns Flex Grid -->
+<div class="relative w-full h-full flex items-end gap-1.5 sm:gap-2 z-0 px-2">
+<!-- Phase 1: CLI (17 Oct - 24 Oct) -->
+<!-- 17 Oct: 28M -->
+<div class="flex-1 h-[70%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[3%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[10%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[87%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">17 Oct · 28.1M</div>
+</div>
+<!-- 18 Oct: 35M -->
+<div class="flex-1 h-[88%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[2%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[9%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[89%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">18 Oct · 35.4M</div>
+</div>
+<!-- 19 Oct: 22M -->
+<div class="flex-1 h-[55%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[4%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[12%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[84%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">19 Oct · 22.0M</div>
+</div>
+<!-- 20 Oct: 40M (Peak) -->
+<div class="flex-1 h-[100%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[2%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[8%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[90%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">20 Oct · 40.2M (Peak)</div>
+</div>
+<!-- 21 Oct: 18M -->
+<div class="flex-1 h-[45%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[3%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[11%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[86%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">21 Oct · 18.0M</div>
+</div>
+<!-- 22 Oct: 31M -->
+<div class="flex-1 h-[77%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[2%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[9%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[89%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">22 Oct · 31.2M</div>
+</div>
+<!-- 23 Oct: 26M -->
+<div class="flex-1 h-[65%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[3%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[10%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[87%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">23 Oct · 26.5M</div>
+</div>
+<!-- 24 Oct: 15M -->
+<div class="flex-1 h-[38%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[4%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[14%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[82%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">24 Oct · 15.1M</div>
+</div>
+<!-- Gap: 25-27 Oct labeled 'no activity' -->
+<div class="flex-1 h-full flex flex-col justify-end items-center relative py-1 border-b-2 border-dashed border-neutral-700">
+<span class="text-[9px] font-mono text-neutral-500 absolute bottom-1 rotate-90 sm:rotate-0 tracking-tighter">quiet</span>
+</div>
+<div class="flex-1 h-full flex flex-col justify-end items-center relative py-1 border-b-2 border-dashed border-neutral-700">
+<span class="text-[9px] font-mono text-neutral-500 absolute bottom-3 whitespace-nowrap -translate-x-1/2 hidden sm:block">no activity</span>
+</div>
+<div class="flex-1 h-full flex flex-col justify-end items-center relative py-1 border-b-2 border-dashed border-neutral-700">
+<span class="text-[9px] font-mono text-neutral-500 absolute bottom-1 rotate-90 sm:rotate-0 tracking-tighter">quiet</span>
+</div>
+<!-- Phase 2: App (28 Oct - 15 Nov sample spread) -->
+<!-- 28 Oct: 12M -->
+<div class="flex-1 h-[30%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[4%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[15%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[81%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">28 Oct · 12.0M</div>
+</div>
+<!-- 30 Oct: 9M -->
+<div class="flex-1 h-[22%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[5%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[16%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[79%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">30 Oct · 8.9M</div>
+</div>
+<!-- 02 Nov: 14M -->
+<div class="flex-1 h-[35%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[3%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[12%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[85%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">02 Nov · 14.2M</div>
+</div>
+<!-- 05 Nov: 19M -->
+<div class="flex-1 h-[48%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[3%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[11%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[86%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">05 Nov · 19.3M</div>
+</div>
+<!-- 09 Nov: 8M -->
+<div class="flex-1 h-[20%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[6%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[18%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[76%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">09 Nov · 8.1M</div>
+</div>
+<!-- 12 Nov: 11M -->
+<div class="flex-1 h-[28%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[4%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[14%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[82%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">12 Nov · 11.4M</div>
+</div>
+<!-- 15 Nov: 6M -->
+<div class="flex-1 h-[15%] flex flex-col justify-end group relative cursor-pointer">
+<div class="w-full bg-[#FCAD70] h-[6%] rounded-t-sm"></div>
+<div class="w-full bg-[#8AB4F8] h-[19%]"></div>
+<div class="w-full bg-[#3C5A8A] h-[75%] rounded-b-sm"></div>
+<div class="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white font-mono text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap border border-white/10 z-20">15 Nov · 6.2M</div>
+</div>
+</div>
+<!-- X-Axis Labels -->
+<div class="absolute bottom-0 inset-x-0 flex justify-between text-[10px] font-mono text-[#A1A1AA] pt-1 border-t border-win-border">
+<span>17 Oct</span>
+<span>20 Oct</span>
+<span>24 Oct</span>
+<span class="text-neutral-500">25–27 (idle)</span>
+<span>28 Oct</span>
+<span>05 Nov</span>
+<span>12 Nov</span>
+<span>15 Nov</span>
+</div>
+</div>
+</div>
+</div>
+<!-- TWO SIDE-BY-SIDE CARDS: Top Sessions & Top Projects -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<!-- Left Card: Top Sessions by Cost -->
+<div class="bg-[#1F1F1F] rounded-xl p-5 border border-win-border">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#8AB4F8] text-base" data-icon="format_list_bulleted">format_list_bulleted</span>
+<h3 class="text-sm font-medium text-white">Top sessions by cost</h3>
+</div>
+<span class="text-xs font-mono text-[#A1A1AA]">Top 5</span>
+</div>
+<div class="space-y-2.5">
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">AntigravityUsageDashboard</span>
+<span class="text-[10px] text-[#A1A1AA] flex items-center gap-1.5 mt-0.5">
+<span class="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9]">CLI</span>
+<span>antigravity-dashboard</span>
+</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹892</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">58.4M tok</div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">Rust Windows App UI De...</span>
+<span class="text-[10px] text-[#A1A1AA] flex items-center gap-1.5 mt-0.5">
+<span class="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9]">CLI</span>
+<span>win-native-core</span>
+</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹645</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">41.8M tok</div>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">SLMRetraining_FullRun</span>
+<span class="text-[10px] text-[#A1A1AA] flex items-center gap-1.5 mt-0.5">
+<span class="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9]">CLI</span>
+<span>slm-inference</span>
+</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹512</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">33.1M tok</div>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">TokenEstimator-v3-eval</span>
+<span class="text-[10px] text-[#A1A1AA] flex items-center gap-1.5 mt-0.5">
+<span class="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-neutral-700 text-neutral-200">APP</span>
+<span>antigravity-dashboard</span>
+</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹388</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">24.9M tok</div>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">ShaderKernelExploration</span>
+<span class="text-[10px] text-[#A1A1AA] flex items-center gap-1.5 mt-0.5">
+<span class="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9]">CLI</span>
+<span>graphics-lab</span>
+</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹290</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">19.2M tok</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Card: Top Projects by Cost -->
+<div class="bg-[#1F1F1F] rounded-xl p-5 border border-win-border">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#FCAD70] text-base" data-icon="folder_special">folder_special</span>
+<h3 class="text-sm font-medium text-white">Top projects by cost</h3>
+</div>
+<span class="text-xs font-mono text-[#A1A1AA]">5 active</span>
+</div>
+<div class="space-y-2.5">
+<!-- Project 1 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">antigravity-dashboard</span>
+<span class="text-[10px] text-[#A1A1AA] mt-0.5">44 sessions · 89% cache hit</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹1,940</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">126.8M tok</div>
+</div>
+</div>
+<!-- Project 2 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">win-native-core</span>
+<span class="text-[10px] text-[#A1A1AA] mt-0.5">38 sessions · 93% cache hit</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹1,432</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">94.2M tok</div>
+</div>
+</div>
+<!-- Project 3 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">slm-inference</span>
+<span class="text-[10px] text-[#A1A1AA] mt-0.5">18 sessions · 91% cache hit</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹720</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">47.5M tok</div>
+</div>
+</div>
+<!-- Project 4 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">graphics-lab</span>
+<span class="text-[10px] text-[#A1A1AA] mt-0.5">12 sessions · 86% cache hit</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹385</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">25.1M tok</div>
+</div>
+</div>
+<!-- Project 5 -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-colors">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="text-xs font-medium text-white truncate font-mono">research-learning</span>
+<span class="text-[10px] text-[#A1A1AA] mt-0.5">8 sessions · 94% cache hit</span>
+</div>
+<div class="text-right shrink-0">
+<div class="text-xs font-mono font-medium text-white">₹230</div>
+<div class="text-[10px] font-mono text-[#A1A1AA]">14.1M tok</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- COMPARISON CARD: APP VS CLI -->
+<div class="bg-[#1F1F1F] rounded-xl p-5 border border-win-border">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="text-sm font-medium text-white">App vs CLI comparison</h3>
+<p class="text-xs text-[#A1A1AA] mt-0.5">Cache reuse behavior and consumption footprint by execution channel</p>
+</div>
+<span class="text-xs font-mono text-[#A1A1AA]">120 cumulative runs</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Antigravity App Card -->
+<div class="p-4 rounded-xl bg-white/[0.02] border border-win-border hover:border-white/20 transition-all flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-neutral-700 text-neutral-200">APP</span>
+<span class="text-sm font-medium text-white">Antigravity App</span>
+</div>
+<span class="font-mono text-xs text-[#A1A1AA]">6 sessions (5%)</span>
+</div>
+<div class="grid grid-cols-3 gap-2 my-3 text-center">
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Tokens</div>
+<div class="text-sm font-mono font-medium text-white mt-0.5">18.52M</div>
+</div>
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Cache-hit</div>
+<div class="text-sm font-mono font-medium text-[#8AB4F8] mt-0.5">85%</div>
+</div>
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Cost</div>
+<div class="text-sm font-mono font-medium text-emerald-400 mt-0.5">≈ ₹319</div>
+</div>
+</div>
+</div>
+<div class="text-[11px] text-[#A1A1AA] pt-2 border-t border-white/5 flex items-center justify-between">
+<span>Interactive editor sessions</span>
+<span class="font-mono text-neutral-300">avg 3.08M / session</span>
+</div>
+</div>
+<!-- Antigravity CLI Card -->
+<div class="p-4 rounded-xl bg-white/[0.02] border border-[#C58AF9]/20 hover:border-[#C58AF9]/40 transition-all flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#C58AF9]/20 text-[#C58AF9] border border-[#C58AF9]/30">CLI</span>
+<span class="text-sm font-medium text-white">Antigravity CLI</span>
+</div>
+<span class="font-mono text-xs text-[#C58AF9]">114 sessions (95%)</span>
+</div>
+<div class="grid grid-cols-3 gap-2 my-3 text-center">
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Tokens</div>
+<div class="text-sm font-mono font-medium text-white mt-0.5">289.17M</div>
+</div>
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Cache-hit</div>
+<div class="text-sm font-mono font-medium text-[#8AB4F8] mt-0.5">91%</div>
+</div>
+<div class="bg-black/30 p-2 rounded-lg border border-white/5">
+<div class="text-[10px] text-[#A1A1AA]">Cost</div>
+<div class="text-sm font-mono font-medium text-emerald-400 mt-0.5">≈ ₹4,388</div>
+</div>
+</div>
+</div>
+<div class="text-[11px] text-[#A1A1AA] pt-2 border-t border-white/5 flex items-center justify-between">
+<span>Heavy automated development pipelines</span>
+<span class="font-mono text-[#C58AF9]">avg 2.53M / session</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM MONO STATUS BAR (Pinned at bottom of content card) -->
+<footer class="h-8 border-t border-win-border px-4 flex items-center justify-between bg-[#1F1F1F] text-[11px] font-mono text-neutral-400 shrink-0">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<div class="flex items-center gap-4 text-neutral-500 text-[10px]">
+<span>UTC+5:30</span>
+<span>Dark Theme</span>
+<span class="text-neutral-400">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</div>
+</main>
+</div>
+</body></html>

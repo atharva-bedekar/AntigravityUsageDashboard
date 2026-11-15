@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — Design System &amp; Motion Storyboard (v3)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Antigravity Design System Base Tokens */
+    :root {
+      --canvas: #FAFAFA;
+      --card-bg: #FFFFFF;
+      --subtle-fill: #F5F5F5;
+      --border-panel: #E0E0E0;
+      --border-control: #E6E6E6;
+      --text-strong: #0A0A0C;
+      --text-main: #3F3F46;
+      --text-muted: #71717A;
+      --text-label: #828283;
+      --code-color: #3E5270;
+      --accent-link: #1A73E8;
+    }
+
+    body {
+      background-color: #FAFAFA;
+      color: #3F3F46;
+      font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-mono-numbers {
+      font-family: 'JetBrains Mono', monospace;
+      font-feature-settings: "tnum" 1, "zero" 1;
+    }
+
+    /* Keyframe Animations from Section 5 */
+    @keyframes pageEnterAnim {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes barGrowAnim {
+      0% { transform: scaleY(0); }
+      100% { transform: scaleY(1); }
+    }
+
+    @keyframes chevronRotate {
+      0%, 40% { transform: rotate(0deg); }
+      60%, 100% { transform: rotate(90deg); }
+    }
+
+    @keyframes accordionHeight {
+      0%, 30% { max-height: 0px; opacity: 0; }
+      60%, 100% { max-height: 90px; opacity: 1; }
+    }
+
+    @keyframes spinnerRotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pixelAssemble {
+      0% { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; }
+      40% { transform: translate(0, 0) scale(1.05); opacity: 1; }
+      75% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; }
+    }
+
+    .anim-page-enter {
+      animation: pageEnterAnim 1.6s cubic-bezier(0.2, 0, 0, 1) infinite;
+    }
+
+    .anim-bar-grow-1 { transform-origin: bottom; animation: barGrowAnim 1.6s cubic-bezier(0.2, 0, 0, 1) infinite; }
+    .anim-bar-grow-2 { transform-origin: bottom; animation: barGrowAnim 1.6s cubic-bezier(0.2, 0, 0, 1) 0.08s infinite; }
+    .anim-bar-grow-3 { transform-origin: bottom; animation: barGrowAnim 1.6s cubic-bezier(0.2, 0, 0, 1) 0.16s infinite; }
+    .anim-bar-grow-4 { transform-origin: bottom; animation: barGrowAnim 1.6s cubic-bezier(0.2, 0, 0, 1) 0.24s infinite; }
+
+    .anim-chevron {
+      animation: chevronRotate 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+    }
+
+    .anim-accordion-body {
+      animation: accordionHeight 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+      overflow: hidden;
+    }
+
+    .anim-spinner {
+      animation: spinnerRotate 1s linear infinite;
+    }
+
+    .pixel-p1 { --dx: -16px; --dy: -14px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p2 { --dx: 14px; --dy: -12px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p3 { --dx: -18px; --dy: 0px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p4 { --dx: 0px; --dy: 0px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p5 { --dx: 18px; --dy: 2px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p6 { --dx: -14px; --dy: 16px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+    .pixel-p7 { --dx: 16px; --dy: 16px; animation: pixelAssemble 2.2s cubic-bezier(0.2, 0, 0.2, 1) infinite; }
+
+    /* Custom hatch pattern for App token badge / visualization */
+    .hatch-pattern {
+      background-image: repeating-linear-gradient(45deg, rgba(63, 63, 70, 0.15) 0, rgba(63, 63, 70, 0.15) 2px, transparent 2px, transparent 6px);
+    }
+  </style>
+</head>
+<body class="bg-[#FAFAFA] min-h-screen text-[#3F3F46] flex flex-col font-body selection:bg-[#E6F4EA] selection:text-[#188038]">
+<!-- Window Title Bar Mockup (Shared Component TopNavBar Integration) -->
+<header class="bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-headline text-xs font-normal tracking-tight docked full-width top-0 h-8 border-b border-neutral-200 dark:border-neutral-800 flat no shadows flex justify-between items-center w-full px-3 h-8 select-none z-50 sticky">
+<div class="flex items-center gap-3">
+<!-- App Glyph -->
+<div class="w-4 h-4 rounded bg-[#0A0A0C] text-white flex items-center justify-center font-bold text-[9px] tracking-tight">
+        A
+      </div>
+<span class="text-xs font-medium text-neutral-900 dark:text-neutral-100 tracking-wide flex items-center gap-1.5">
+<span>Antigravity Usage</span>
+<span class="text-neutral-400">·</span>
+<span class="text-neutral-500 font-normal">Design System &amp; Motion v3</span>
+<span class="bg-[#E6E6E6] text-[#3F3F46] px-1.5 py-0.2 rounded text-[10px] font-mono font-medium">Windows 11 / Rust Core</span>
+</span>
+</div>
+<!-- Title Bar Right Controls -->
+<div class="flex items-center h-full">
+<button class="h-8 px-3 inline-flex items-center justify-center text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150" title="Minimize">
+<span class="material-symbols-outlined text-[14px]">minimize</span>
+</button>
+<button class="h-8 px-3 inline-flex items-center justify-center text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors duration-150" title="Maximize">
+<span class="material-symbols-outlined text-[13px]">crop_square</span>
+</button>
+<button class="h-8 px-3.5 inline-flex items-center justify-center text-neutral-500 hover:bg-[#D93025] hover:text-white transition-colors duration-150" title="Close">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</div>
+</header>
+<!-- Layout Shell Container: 1440px Canvas Container -->
+<div class="w-full max-w-[1440px] mx-auto p-6 md:p-8 space-y-8 flex-1">
+<!-- Hero / Spec Header -->
+<section class="bg-white border border-[#E0E0E0] rounded-2xl p-7 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[#E6E6E6]">
+<div class="space-y-1.5">
+<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#F5F5F5] border border-[#E6E6E6] text-xs font-mono text-[#3E5270] mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#188038] animate-pulse"></span>
+            SPECIFICATION REFERENCE SHEET · V3.0.4 PRODUCTION
+          </div>
+<h1 class="text-2xl lg:text-[28px] font-semibold text-[#0A0A0C] tracking-tight leading-tight">
+            Antigravity Usage — Design System &amp; Motion Storyboard (v3)
+          </h1>
+<p class="text-sm md:text-base text-[#71717A] max-w-3xl">
+            Monochrome Antigravity 2.0 App Chrome + Semantic Antigravity CLI Data Palette. A comprehensive technical blueprint engineered for desktop precision, high-density token analytics, and sub-pixel motion fidelity.
+          </p>
+</div>
+<!-- Quick metadata badge cluster -->
+<div class="flex flex-wrap lg:flex-col items-start lg:items-end gap-2 text-xs font-mono">
+<div class="inline-flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E6E6E6] rounded-md px-2.5 py-1 text-[#3F3F46]">
+<span class="text-[#71717A]">Version:</span>
+<span class="font-semibold text-[#0A0A0C]">v3.0.4</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E6E6E6] rounded-md px-2.5 py-1 text-[#3F3F46]">
+<span class="text-[#71717A]">Platform:</span>
+<span class="text-[#0A0A0C]">Native Windows App (Rust / Webview2)</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E6E6E6] rounded-md px-2.5 py-1 text-[#3F3F46]">
+<span class="text-[#71717A]">Grid:</span>
+<span class="text-[#0A0A0C]">8pt baseline</span>
+</div>
+<div class="inline-flex items-center gap-1.5 bg-[#FAFAFA] border border-[#E6E6E6] rounded-md px-2.5 py-1 text-[#3F3F46]">
+<span class="text-[#71717A]">Theme:</span>
+<span class="text-[#188038] font-medium">Studio Light (#FAFAFA) / Dark Parity</span>
+</div>
+</div>
+</div>
+<!-- Quick Index Toolbar -->
+<div class="flex items-center justify-between pt-4 text-xs text-[#71717A] overflow-x-auto gap-4">
+<div class="flex items-center gap-2">
+<span class="font-medium text-[#0A0A0C] text-[11px] uppercase tracking-wider">Jump to Section:</span>
+<a class="hover:text-[#0A0A0C] px-2 py-1 rounded bg-[#F5F5F5] transition-colors" href="#swatches">§1 Monochrome Chrome</a>
+<a class="hover:text-[#0A0A0C] px-2 py-1 rounded bg-[#F5F5F5] transition-colors" href="#cli-palette">§2 CLI Semantic Data</a>
+<a class="hover:text-[#0A0A0C] px-2 py-1 rounded bg-[#F5F5F5] transition-colors" href="#typography">§3 Typography Scale</a>
+<a class="hover:text-[#0A0A0C] px-2 py-1 rounded bg-[#F5F5F5] transition-colors" href="#components">§4 Components &amp; Shapes</a>
+<a class="hover:text-[#0A0A0C] px-2 py-1 rounded bg-[#F5F5F5] transition-colors" href="#motion">§5 Motion Storyboard</a>
+</div>
+<div class="flex items-center gap-1 text-[11px] font-mono text-[#828283]">
+<span class="material-symbols-outlined text-sm">terminal</span>
+<span>CLI SYNCHRONIZED</span>
+</div>
+</div>
+</section>
+<!-- SECTION 1: Monochrome Chrome Swatches -->
+<section class="space-y-4" id="swatches">
+<div class="flex items-baseline justify-between border-b border-[#E6E6E6] pb-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 bg-[#0A0A0C] rounded-full"></span>
+<h2 class="text-lg font-semibold text-[#0A0A0C]">01. Monochrome Chrome Swatches</h2>
+<span class="text-xs text-[#71717A] font-mono">(Antigravity 2.0 Architectural Canvas)</span>
+</div>
+<span class="text-xs font-mono text-[#828283]">10 Baseline Tokens</span>
+</div>
+<!-- Swatches Bento Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+<!-- Swatch 1: #FAFAFA -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg border border-[#E0E0E0] bg-[#FAFAFA] mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/80 border border-[#E0E0E0]">Canvas</span>
+<span class="text-[10px] font-mono text-[#71717A]">Base</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#FAFAFA</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">1.0:1 (BG)</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Window Canvas</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Menu bar, toolbar, background fill, desktop shell framing.</p>
+</div>
+</div>
+<!-- Swatch 2: #FFFFFF -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg border border-[#E0E0E0] bg-[#FFFFFF] mb-3 flex items-end p-2 justify-between shadow-xs">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-[#F5F5F5] border border-[#E0E0E0]">Panel</span>
+<span class="text-[10px] font-mono text-[#71717A]">Active</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#FFFFFF</span>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#3F3F46] px-1 rounded">White</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Surface Panel</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Card containers, modal canvases, active nav pills with 1px border.</p>
+</div>
+</div>
+<!-- Swatch 3: #F5F5F5 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white border border-[#E0E0E0]">Subtle</span>
+<span class="text-[10px] font-mono text-[#71717A]">Filter</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#F5F5F5</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">Pass</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Subtle Fill</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Inline code chip background, table header hover, filter container.</p>
+</div>
+</div>
+<!-- Swatch 4: #E0E0E0 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#E0E0E0] mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/90">Dividers</span>
+<span class="text-[10px] font-mono text-[#3F3F46]">1px rule</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#E0E0E0</span>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#71717A] px-1 rounded">Stroke</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Panel Border</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Main content panel outer perimeter and key section dividers.</p>
+</div>
+</div>
+<!-- Swatch 5: #E6E6E6 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#E6E6E6] mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/90">Controls</span>
+<span class="text-[10px] font-mono text-[#3F3F46]">Subtle</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#E6E6E6</span>
+<span class="text-[10px] font-mono bg-[#F5F5F5] text-[#71717A] px-1 rounded">Outline</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Control Border</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Card outer perimeter, button outlines, unselected pill rings.</p>
+</div>
+</div>
+<!-- Swatch 6: #0A0A0C -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#0A0A0C] text-white mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/20">Primary</span>
+<span class="text-[10px] font-mono text-neutral-400">18.8:1</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#0A0A0C</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">AAA</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Strongest Text / Action</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Headlines, primary CTA pill fills, solid black brand glyphs.</p>
+</div>
+</div>
+<!-- Swatch 7: #3F3F46 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#3F3F46] text-white mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/20">Zinc-700</span>
+<span class="text-[10px] font-mono text-neutral-300">8.2:1</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#3F3F46</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">AAA</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Standard Text</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Default body copy, table cell content, standard iconography.</p>
+</div>
+</div>
+<!-- Swatch 8: #71717A -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#71717A] text-white mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/20">Zinc-500</span>
+<span class="text-[10px] font-mono text-neutral-200">4.6:1</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#71717A</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">AA</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Muted Text &amp; Caption</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Timestamps, unit denominators, auxiliary guidance notes.</p>
+</div>
+</div>
+<!-- Swatch 9: #3E5270 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#3E5270] text-white mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/20">Slate Blue</span>
+<span class="text-[10px] font-mono text-neutral-200">6.9:1</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#3E5270</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">AAA</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Inline Code Text</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Monospace paths, session IDs, CLI syntax accents in chips.</p>
+</div>
+</div>
+<!-- Swatch 10: #1A73E8 -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-3.5 hover:border-[#1A73E8] transition-all duration-150 group">
+<div class="h-16 rounded-lg bg-[#1A73E8] text-white mb-3 flex items-end p-2 justify-between">
+<span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/20">Google Blue</span>
+<span class="text-[10px] font-mono text-white">4.8:1</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#0A0A0C]">#1A73E8</span>
+<span class="text-[10px] font-mono bg-[#E6F4EA] text-[#188038] px-1 rounded">AA</span>
+</div>
+<p class="text-xs font-medium text-[#3F3F46]">Link &amp; Focus Ring</p>
+<p class="text-[11px] text-[#71717A] leading-tight">Hyperlinks, active focus outlines (ring-2), interactive feedback.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2: CLI Semantic Data Palette (Dual-column: Light vs Dark Theme) -->
+<section class="space-y-4" id="cli-palette">
+<div class="flex items-baseline justify-between border-b border-[#E6E6E6] pb-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 bg-[#9334E6] rounded-full"></span>
+<h2 class="text-lg font-semibold text-[#0A0A0C]">02. Semantic Antigravity CLI Data Palette</h2>
+<span class="text-xs text-[#71717A] font-mono">(Dual-Theme Consumption &amp; Telemetry Matrix)</span>
+</div>
+<span class="text-xs font-mono text-[#828283]">Token Ratio + Source Attribution</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Light Mode Column -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex items-center justify-between pb-3 border-b border-[#E6E6E6]">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#FAFAFA] border border-[#0A0A0C]"></span>
+<h3 class="text-sm font-semibold text-[#0A0A0C] uppercase tracking-wide">Studio Light Palette</h3>
+</div>
+<span class="text-xs font-mono px-2 py-0.5 rounded bg-[#F5F5F5] text-[#3F3F46]">Default Target</span>
+</div>
+<!-- Token Stack Table / Cards -->
+<div class="space-y-2.5">
+<!-- New Input -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#E6E6E6] bg-[#FAFAFA]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#1967D2] flex items-center justify-center text-white font-mono text-xs font-bold">IN</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">New input</span>
+<span class="font-mono text-[11px] text-[#1967D2] font-medium">#1967D2</span>
+</div>
+<span class="text-[11px] text-[#71717A]">Full price cold context tokens injected into prompt</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-mono text-xs font-bold text-[#0A0A0C]">1.0x Rate</span>
+<div class="w-16 h-1.5 bg-[#1967D2] rounded-full mt-1"></div>
+</div>
+</div>
+<!-- Cached Input -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#E6E6E6] bg-[#FAFAFA]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#AECBFA] border border-[#1967D2]/20 flex items-center justify-center text-[#1967D2] font-mono text-xs font-bold">C</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Cached input</span>
+<span class="font-mono text-[11px] text-[#3F3F46] font-medium">#AECBFA</span>
+</div>
+<span class="text-[11px] text-[#71717A]">Prompt caching memory hit (10x cheaper rate)</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-mono text-xs font-bold text-[#188038]">0.1x (10x off)</span>
+<div class="w-16 h-1.5 bg-[#AECBFA] rounded-full mt-1"></div>
+</div>
+</div>
+<!-- Output -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#E6E6E6] bg-[#FAFAFA]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#E37400] flex items-center justify-center text-white font-mono text-xs font-bold">OUT</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Output</span>
+<span class="font-mono text-[11px] text-[#E37400] font-medium">#E37400</span>
+</div>
+<span class="text-[11px] text-[#71717A]">Generative completion stream tokens</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-mono text-xs font-bold text-[#0A0A0C]">4.0x Multiplier</span>
+<div class="w-16 h-1.5 bg-[#E37400] rounded-full mt-1"></div>
+</div>
+</div>
+<!-- Source: App vs CLI -->
+<div class="grid grid-cols-2 gap-2 pt-1">
+<div class="p-2.5 rounded-xl border border-[#E6E6E6] bg-white flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-md hatch-pattern border border-[#3F3F46] flex items-center justify-center font-bold text-xs text-[#0A0A0C]">A</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-semibold">Source App</span>
+<span class="bg-[#3F3F46] text-white text-[9px] font-mono px-1 rounded">APP</span>
+</div>
+<span class="font-mono text-[10px] text-[#71717A]">#3F3F46 (Hatched)</span>
+</div>
+</div>
+<div class="p-2.5 rounded-xl border border-[#E6E6E6] bg-white flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-md bg-[#9334E6] flex items-center justify-center font-bold text-xs text-white">A</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-semibold">Source CLI</span>
+<span class="bg-[#9334E6] text-white text-[9px] font-mono px-1 rounded">CLI</span>
+</div>
+<span class="font-mono text-[10px] text-[#9334E6]">#9334E6 (Solid)</span>
+</div>
+</div>
+</div>
+<!-- Status Pills Matrix -->
+<div class="pt-2 border-t border-[#E6E6E6] space-y-2">
+<span class="text-[11px] font-mono text-[#828283] uppercase tracking-wider block">Status Indicator Tokens</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#E6F4EA] text-[#188038] border border-[#188038]/20">
+<span class="material-symbols-outlined text-sm font-bold">check_circle</span>
+<span>OK · #188038 on #E6F4EA</span>
+</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#FEF7E0] text-[#E37400] border border-[#E37400]/20">
+<span class="material-symbols-outlined text-sm text-[#FFB02E]">warning</span>
+<span>Warning · #E37400 on #FEF7E0</span>
+</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#FCE8E6] text-[#D93025] border border-[#D93025]/20">
+<span class="material-symbols-outlined text-sm">error</span>
+<span>Error · #D93025 on #FCE8E6</span>
+</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dark Mode Parity Column -->
+<div class="bg-[#131313] border border-[#2D2D2D] rounded-2xl p-5 shadow-sm space-y-4 text-[#E3E3E3]">
+<div class="flex items-center justify-between pb-3 border-b border-[#2D2D2D]">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#1F1F1F] border border-[#8AB4F8]"></span>
+<h3 class="text-sm font-semibold text-white uppercase tracking-wide">Dark Mode Parity (#131313)</h3>
+</div>
+<span class="text-xs font-mono px-2 py-0.5 rounded bg-[#1F1F1F] text-[#8AB4F8] border border-[#2D2D2D]">Luminance Compensated</span>
+</div>
+<!-- Dark Token Stack -->
+<div class="space-y-2.5">
+<!-- New Input (Dark) -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#8AB4F8] flex items-center justify-center text-[#0A0A0C] font-mono text-xs font-bold">IN</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-white">New input (Night)</span>
+<span class="font-mono text-[11px] text-[#8AB4F8]">#8AB4F8</span>
+</div>
+<span class="text-[11px] text-[#A1A1AA]">Desaturated blue for OLED contrast fidelity</span>
+</div>
+</div>
+<div class="w-16 h-1.5 bg-[#8AB4F8] rounded-full"></div>
+</div>
+<!-- Cached Input (Dark) -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#3C5A8A] flex items-center justify-center text-white font-mono text-xs font-bold">C</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-white">Cached input (Night)</span>
+<span class="font-mono text-[11px] text-[#8AB4F8]">#3C5A8A</span>
+</div>
+<span class="text-[11px] text-[#A1A1AA]">Deep slate ice blue tone</span>
+</div>
+</div>
+<div class="w-16 h-1.5 bg-[#3C5A8A] rounded-full"></div>
+</div>
+<!-- Output (Dark) -->
+<div class="flex items-center justify-between p-2.5 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A]">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#FCAD70] flex items-center justify-center text-[#0A0A0C] font-mono text-xs font-bold">OUT</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold text-white">Output (Night)</span>
+<span class="font-mono text-[11px] text-[#FCAD70]">#FCAD70</span>
+</div>
+<span class="text-[11px] text-[#A1A1AA]">Warm amber glow token</span>
+</div>
+</div>
+<div class="w-16 h-1.5 bg-[#FCAD70] rounded-full"></div>
+</div>
+<!-- Source: App vs CLI (Dark) -->
+<div class="grid grid-cols-2 gap-2 pt-1">
+<div class="p-2.5 rounded-xl border border-[#2A2A2A] bg-[#1F1F1F] flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-md border border-[#A1A1AA] flex items-center justify-center font-bold text-xs text-white">A</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-semibold text-white">App Dark</span>
+<span class="bg-[#A1A1AA] text-black text-[9px] font-mono px-1 rounded font-bold">APP</span>
+</div>
+<span class="font-mono text-[10px] text-[#A1A1AA]">#A1A1AA</span>
+</div>
+</div>
+<div class="p-2.5 rounded-xl border border-[#2A2A2A] bg-[#1F1F1F] flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-md bg-[#C58AF9] flex items-center justify-center font-bold text-xs text-black">A</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-semibold text-white">CLI Dark</span>
+<span class="bg-[#C58AF9] text-black text-[9px] font-mono px-1 rounded font-bold">CLI</span>
+</div>
+<span class="font-mono text-[10px] text-[#C58AF9]">#C58AF9</span>
+</div>
+</div>
+</div>
+<!-- Dark Status Bar Mock -->
+<div class="pt-2 border-t border-[#2D2D2D] space-y-2">
+<span class="text-[11px] font-mono text-[#71717A] uppercase tracking-wider block">Terminal / Surface Background Spec</span>
+<div class="p-2.5 rounded-xl bg-[#000000] border border-[#262626] font-mono text-[11px] flex items-center justify-between">
+<span class="text-[#8AB4F8]">$ antigravity usage sync --mode=daemon</span>
+<span class="text-[#81C995] flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-[#81C995]"></span>200 OK</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: Typography Scale -->
+<section class="space-y-4" id="typography">
+<div class="flex items-baseline justify-between border-b border-[#E6E6E6] pb-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 bg-[#1A73E8] rounded-full"></span>
+<h2 class="text-lg font-semibold text-[#0A0A0C]">03. Typography Scale &amp; Metrics Hierarchy</h2>
+<span class="text-xs text-[#71717A] font-mono">(Public Sans / Google Sans + Google Sans Code Tabular Figures)</span>
+</div>
+<span class="text-xs font-mono text-[#828283]">Sentence Case Enforcement</span>
+</div>
+<div class="bg-white border border-[#E0E0E0] rounded-2xl overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead class="bg-[#F5F5F5] border-b border-[#E6E6E6] text-xs font-mono text-[#71717A] uppercase">
+<tr>
+<th class="py-3 px-5 font-medium">Role &amp; CSS Token</th>
+<th class="py-3 px-4 font-medium">Size / Line-Height</th>
+<th class="py-3 px-4 font-medium">Weight / Tracking</th>
+<th class="py-3 px-6 font-medium">Live Render Specimen</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#E6E6E6] text-[#3F3F46]">
+<!-- 1. Summary Sentence -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">Summary sentence</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.text-summary-statement</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">24px / 36px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">400 regular (-0.015em)</td>
+<td class="py-4 px-6">
+<p class="text-[24px] leading-[36px] text-[#0A0A0C] tracking-tight font-normal">
+                    You used <span class="font-medium text-[#1967D2]">307.7M</span> tokens across <span class="font-medium">18 workspace runs</span> today.
+                  </p>
+</td>
+</tr>
+<!-- 2. KPI Number -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">KPI number</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.font-mono-numbers .text-kpi</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">30px / 38px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">700 bold (tabular nums)</td>
+<td class="py-4 px-6">
+<div class="flex items-baseline gap-3">
+<span class="font-mono text-[30px] leading-[38px] font-bold text-[#0A0A0C] tracking-tight">
+                      307,714,892
+                    </span>
+<span class="text-xs font-mono text-[#188038] bg-[#E6F4EA] px-2 py-0.5 rounded-full font-semibold">
+                      +14.8% WoW
+                    </span>
+</div>
+</td>
+</tr>
+<!-- 3. Page Title -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">Page title</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.text-page-title</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">20px / 28px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">600 semibold (-0.01em)</td>
+<td class="py-4 px-6">
+<h3 class="text-[20px] leading-[28px] font-semibold text-[#0A0A0C]">
+                    Session History &amp; Breakdown by Workspace
+                  </h3>
+</td>
+</tr>
+<!-- 4. Card Title -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">Card title</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.text-card-title</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">15px / 22px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">500 medium</td>
+<td class="py-4 px-6">
+<h4 class="text-[15px] leading-[22px] font-medium text-[#0A0A0C] flex items-center gap-2">
+<span>Cache Hit Efficiency Ratio</span>
+<span class="text-xs text-[#71717A] font-normal">· Last 7 days</span>
+</h4>
+</td>
+</tr>
+<!-- 5. Body Copy -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">Body copy</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.text-body-standard</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">14px / 22px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">400 regular (#3F3F46)</td>
+<td class="py-4 px-6">
+<p class="text-[14px] leading-[22px] text-[#3F3F46] max-w-xl">
+                    Sessions are parsed directly from SQLite runtime journals located in <code class="text-xs bg-[#F5F5F5] text-[#3E5270] px-1.5 py-0.5 rounded font-mono">~/.antigravity/sessions.db</code> with non-destructive delta aggregation.
+                  </p>
+</td>
+</tr>
+<!-- 6. Caption / Metadata -->
+<tr class="hover:bg-[#FAFAFA] transition-colors">
+<td class="py-4 px-5">
+<span class="font-semibold text-[#0A0A0C] block">Caption / Metadata</span>
+<code class="text-[11px] font-mono text-[#3E5270] bg-[#F5F5F5] px-1.5 py-0.5 rounded">.text-caption-mono</code>
+</td>
+<td class="py-4 px-4 font-mono text-xs">12px / 16px</td>
+<td class="py-4 px-4 font-mono text-xs text-[#71717A]">400 regular (#71717A)</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-3 text-[12px] leading-[16px] text-[#71717A] font-mono">
+<span>Updated 3m ago</span>
+<span>·</span>
+<span>UUID: 9f82-bc10-antigravity</span>
+<span>·</span>
+<span class="text-[#1A73E8] cursor-pointer hover:underline">View raw payload</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- SECTION 4: Components & Shapes Library -->
+<section class="space-y-4" id="components">
+<div class="flex items-baseline justify-between border-b border-[#E6E6E6] pb-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 bg-[#E37400] rounded-full"></span>
+<h2 class="text-lg font-semibold text-[#0A0A0C]">04. Components &amp; Shapes Library</h2>
+<span class="text-xs text-[#71717A] font-mono">(16px / 12px / 20px Shape Hierarchy &amp; Interactive Tokens)</span>
+</div>
+<span class="text-xs font-mono text-[#828283]">Precision Desktop Kit</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+<!-- 1. Content Panel & Cards Spec -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Panels &amp; Cards Radii</span>
+<span class="font-mono text-[10px] text-[#71717A]">16px vs 12px</span>
+</div>
+<!-- Micro Spec Render -->
+<div class="p-3 bg-[#FAFAFA] rounded-2xl border border-[#E0E0E0] space-y-2">
+<div class="flex items-center justify-between text-[11px] font-mono text-[#71717A]">
+<span>Outer Panel: radius 16px (#E0E0E0)</span>
+</div>
+<div class="p-3 bg-white rounded-xl border border-[#E6E6E6] shadow-xs space-y-1.5">
+<div class="flex items-center justify-between">
+<span class="text-xs font-medium text-[#0A0A0C]">Inner Card (12px rounded-xl)</span>
+<span class="text-[10px] font-mono text-[#188038] bg-[#E6F4EA] px-1.5 rounded">No shadow</span>
+</div>
+<p class="text-[11px] text-[#71717A]">Contained cleanly inside outer canvas with zero border conflicts.</p>
+</div>
+</div>
+<div class="text-[11px] font-mono text-[#71717A] space-y-1">
+<p>• Panels: <code class="text-[#3E5270] bg-[#F5F5F5] px-1 rounded">rounded-2xl border border-[#E0E0E0]</code></p>
+<p>• Cards: <code class="text-[#3E5270] bg-[#F5F5F5] px-1 rounded">rounded-xl border border-[#E6E6E6]</code></p>
+</div>
+</div>
+<!-- 2. Filter Bar (Composer-style) -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Filter Bar (20px Pill)</span>
+<span class="font-mono text-[10px] text-[#71717A]">Composer pattern</span>
+</div>
+<!-- Live Filter Bar Component -->
+<div class="py-2">
+<div class="inline-flex items-center p-1 bg-[#F5F5F5] border border-[#E6E6E6] rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.04)] w-full justify-between">
+<button class="px-3 py-1 rounded-full text-xs font-medium bg-white text-[#0A0A0C] shadow-sm border border-[#E6E6E6]">
+                All Sources
+              </button>
+<button class="px-3 py-1 rounded-full text-xs text-[#71717A] hover:text-[#0A0A0C] transition-colors">
+                CLI Only
+              </button>
+<button class="px-3 py-1 rounded-full text-xs text-[#71717A] hover:text-[#0A0A0C] transition-colors">
+                App Only
+              </button>
+<div class="w-px h-4 bg-[#E0E0E0]"></div>
+<button class="pr-2 text-[#71717A] hover:text-[#0A0A0C] flex items-center">
+<span class="material-symbols-outlined text-sm">tune</span>
+</button>
+</div>
+</div>
+<p class="text-[11px] text-[#71717A] leading-relaxed">
+            Segmented controller encapsulated within 20px pill radius container, utilizing 1px `#F0F0F0` active offset.
+          </p>
+</div>
+<!-- 3. Primary & Secondary Buttons -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Action Buttons &amp; Pills</span>
+<span class="font-mono text-[10px] text-[#71717A]">#0A0A0C / White</span>
+</div>
+<div class="flex flex-wrap items-center gap-2.5 pt-1">
+<!-- Primary Action -->
+<button class="px-3.5 py-1.5 rounded-lg bg-[#0A0A0C] text-white text-xs font-medium hover:bg-neutral-800 transition-all active:scale-[0.98] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">refresh</span>
+<span>Rescan Sessions</span>
+</button>
+<!-- Secondary Action -->
+<button class="px-3 py-1.5 rounded-lg bg-white border border-[#E6E6E6] text-[#0A0A0C] text-xs font-medium hover:bg-[#F5F5F5] transition-all active:scale-[0.98]">
+              Export CSV
+            </button>
+<!-- Ghost / Icon Action -->
+<button class="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#71717A] hover:text-[#0A0A0C] transition-colors" title="Settings">
+<span class="material-symbols-outlined text-base">settings</span>
+</button>
+</div>
+<p class="text-[11px] font-mono text-[#71717A]">
+            Primary: <code class="text-[#3E5270]">#0A0A0C</code> | Secondary: <code class="text-[#3E5270]">#FFFFFF + border</code>
+</p>
+</div>
+<!-- 4. Badges & Source Attribution -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Source Badges (20px Height)</span>
+<span class="font-mono text-[10px] text-[#71717A]">APP vs CLI Mark</span>
+</div>
+<div class="flex items-center gap-3 py-1">
+<!-- APP Badge -->
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#F5F5F5] border border-[#E6E6E6]">
+<span class="w-3.5 h-3.5 rounded-full bg-[#0A0A0C] text-white flex items-center justify-center text-[9px] font-bold">A</span>
+<span class="text-[11px] font-bold text-[#3F3F46] tracking-wider">APP</span>
+</div>
+<!-- CLI Badge -->
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#9334E6]/10 border border-[#9334E6]/30">
+<div class="w-3.5 h-3.5 rounded bg-[#9334E6] flex items-center justify-center text-white text-[8px] font-mono font-bold">A</div>
+<span class="text-[11px] font-bold text-[#9334E6] tracking-wider">CLI</span>
+</div>
+<!-- Verified Indicator -->
+<div class="inline-flex items-center gap-1 text-[11px] text-[#188038] font-medium bg-[#E6F4EA] px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-xs">verified</span>
+<span>Sync</span>
+</div>
+</div>
+<p class="text-[11px] text-[#71717A]">
+            Mandatory uppercase badge labeling for source telemetry differentiation across all session log streams.
+          </p>
+</div>
+<!-- 5. Inputs & Search Token with Focus Ring -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Inputs &amp; Focus Ring</span>
+<span class="font-mono text-[10px] text-[#71717A]">#1A73E8 Focus</span>
+</div>
+<div class="space-y-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2.5 top-2 text-sm text-[#71717A]">search</span>
+<input class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-[#E6E6E6] bg-white text-[#0A0A0C] font-mono focus:outline-none focus:border-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]/20 transition-all" placeholder="Filter projects or model IDs..." type="text" value="claude-3-5-sonnet"/>
+</div>
+</div>
+<p class="text-[11px] text-[#71717A]">
+            8px rounded corner with subtle `#E6E6E6` border expanding into `#1A73E8` with 20% opacity glow ring on focus.
+          </p>
+</div>
+<!-- 6. Approximate Estimate Indicator & Tooltip -->
+<div class="bg-white border border-[#E6E6E6] rounded-xl p-4 space-y-3">
+<div class="flex items-center justify-between border-b border-[#E6E6E6] pb-2">
+<span class="text-xs font-semibold text-[#0A0A0C]">Estimate Indicator &amp; Tooltip</span>
+<span class="font-mono text-[10px] text-[#71717A]">≈ Symbol Spec</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<!-- Approximate Metric Display -->
+<div class="flex items-baseline gap-1.5">
+<span class="text-base font-bold text-[#E37400] font-mono group relative cursor-help">
+                ≈ $4.18
+                <!-- Micro Tooltip Mock -->
+<span class="absolute -top-7 left-0 hidden group-hover:block bg-[#0A0A0C] text-white text-[10px] font-sans px-2 py-0.5 rounded shadow-lg whitespace-nowrap z-20">
+                  Approximate: Output tokens pending cache ratio
+                </span>
+</span>
+<span class="text-xs text-[#71717A]">USD Est.</span>
+</div>
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#FEF7E0] text-[#E37400] border border-[#E37400]/20 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">all_inclusive</span>
+<span>Floating Rate</span>
+</span>
+</div>
+<p class="text-[11px] text-[#71717A]">
+            The <code class="font-mono text-[#E37400]">≈</code> glyph denotes unbilled or interpolated token sessions prior to ledger reconciliation.
+          </p>
+</div>
+</div>
+</section>
+<!-- SECTION 5: Motion Storyboard -->
+<section class="space-y-4" id="motion">
+<div class="flex items-baseline justify-between border-b border-[#E6E6E6] pb-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 bg-[#188038] rounded-full"></span>
+<h2 class="text-lg font-semibold text-[#0A0A0C]">05. Motion Storyboard &amp; Interactive Curves</h2>
+<span class="text-xs text-[#71717A] font-mono">(5 Micro-Interaction Choreographies with Live CSS Demonstrations)</span>
+</div>
+<span class="text-xs font-mono text-[#828283]">60 FPS GPU Standard</span>
+</div>
+<!-- Keyframe Strips Stack -->
+<div class="space-y-4">
+<!-- Strip 1: Page Enter -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-[#E6E6E6]">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-[#0A0A0C] text-white text-[10px] font-mono font-bold">KEYFRAME 01</span>
+<h3 class="text-sm font-semibold text-[#0A0A0C]">Page Enter Choreography</h3>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Smooth decelerated content elevation with sub-pixel alpha reveal.</p>
+</div>
+<div class="flex items-center gap-2 font-mono text-xs text-[#3E5270] bg-[#F5F5F5] px-3 py-1.5 rounded-lg border border-[#E6E6E6]">
+<span>duration: 220ms</span>
+<span>·</span>
+<span>cubic-bezier(0.2, 0, 0, 1)</span>
+<span>·</span>
+<span>Y(6px) → 0</span>
+</div>
+</div>
+<!-- Progression Strip + Live Box -->
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-center">
+<!-- Frame t=0ms -->
+<div class="p-3 rounded-xl border border-dashed border-[#E0E0E0] bg-[#FAFAFA] text-center space-y-2">
+<span class="text-[10px] font-mono text-[#71717A]">t = 0ms</span>
+<div class="h-14 rounded-lg bg-white border border-[#E6E6E6] flex items-center justify-center opacity-0 translate-y-1.5">
+<span class="text-[10px] font-mono">0% / +6px</span>
+</div>
+<span class="text-[10px] font-mono text-[#828283] block">opacity: 0</span>
+</div>
+<!-- Frame t=80ms -->
+<div class="p-3 rounded-xl border border-dashed border-[#E0E0E0] bg-[#FAFAFA] text-center space-y-2">
+<span class="text-[10px] font-mono text-[#71717A]">t = 80ms</span>
+<div class="h-14 rounded-lg bg-white border border-[#E6E6E6] flex items-center justify-center opacity-40 translate-y-1">
+<span class="text-[10px] font-mono">40% / +3.5px</span>
+</div>
+<span class="text-[10px] font-mono text-[#828283] block">opacity: 0.45</span>
+</div>
+<!-- Frame t=160ms -->
+<div class="p-3 rounded-xl border border-dashed border-[#E0E0E0] bg-[#FAFAFA] text-center space-y-2">
+<span class="text-[10px] font-mono text-[#71717A]">t = 160ms</span>
+<div class="h-14 rounded-lg bg-white border border-[#E6E6E6] flex items-center justify-center opacity-85 translate-y-0.5">
+<span class="text-[10px] font-mono">85% / +1px</span>
+</div>
+<span class="text-[10px] font-mono text-[#828283] block">opacity: 0.85</span>
+</div>
+<!-- Frame t=220ms -->
+<div class="p-3 rounded-xl border border-[#188038]/30 bg-[#E6F4EA]/20 text-center space-y-2">
+<span class="text-[10px] font-mono text-[#188038] font-bold">t = 220ms (Rest)</span>
+<div class="h-14 rounded-lg bg-white border border-[#188038]/40 flex items-center justify-center opacity-100 translate-y-0 shadow-xs">
+<span class="text-[10px] font-mono text-[#188038] font-bold">100% / 0px</span>
+</div>
+<span class="text-[10px] font-mono text-[#188038] block">Settled state</span>
+</div>
+<!-- Live Preview Component -->
+<div class="p-3 rounded-xl border border-[#1A73E8] bg-white text-center space-y-2">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono text-[#1A73E8] font-bold uppercase tracking-wider">Live Preview</span>
+<span class="w-2 h-2 rounded-full bg-[#1A73E8] animate-ping"></span>
+</div>
+<div class="h-14 rounded-lg bg-[#FAFAFA] border border-[#E0E0E0] flex items-center justify-center anim-page-enter">
+<span class="text-xs font-mono font-medium text-[#0A0A0C]">Entering Node...</span>
+</div>
+<span class="text-[10px] font-mono text-[#71717A] block">Continuous 1.6s loop</span>
+</div>
+</div>
+</div>
+<!-- Strip 2: KPI Count-up -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-[#E6E6E6]">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-[#0A0A0C] text-white text-[10px] font-mono font-bold">KEYFRAME 02</span>
+<h3 class="text-sm font-semibold text-[#0A0A0C]">KPI Monospace Count-up</h3>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Fixed-width numerical roll-up preventing layout jitter during metric hydration.</p>
+</div>
+<div class="flex items-center gap-2 font-mono text-xs text-[#3E5270] bg-[#F5F5F5] px-3 py-1.5 rounded-lg border border-[#E6E6E6]">
+<span>duration: 400ms</span>
+<span>·</span>
+<span>ease-out</span>
+<span>·</span>
+<span>0 → 307.7M</span>
+</div>
+</div>
+<!-- Counter Sequence Progression -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+<div class="p-3 rounded-xl bg-[#FAFAFA] border border-[#E6E6E6] space-y-1">
+<span class="text-[10px] font-mono text-[#71717A]">Step 1 (0ms)</span>
+<div class="font-mono text-xl font-bold text-[#71717A]">000.0M</div>
+<p class="text-[10px] text-[#828283]">Initial state prior to ledger stream</p>
+</div>
+<div class="p-3 rounded-xl bg-[#FAFAFA] border border-[#E6E6E6] space-y-1">
+<span class="text-[10px] font-mono text-[#71717A]">Step 2 (140ms)</span>
+<div class="font-mono text-xl font-bold text-[#1967D2]">142.4M</div>
+<p class="text-[10px] text-[#828283]">Midpoint linear interpolation</p>
+</div>
+<div class="p-3 rounded-xl bg-[#FAFAFA] border border-[#E6E6E6] space-y-1">
+<span class="text-[10px] font-mono text-[#71717A]">Step 3 (280ms)</span>
+<div class="font-mono text-xl font-bold text-[#1967D2]">289.1M</div>
+<p class="text-[10px] text-[#828283]">Deceleration braking applied</p>
+</div>
+<div class="p-3 rounded-xl bg-white border border-[#188038] shadow-xs space-y-1">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-mono text-[#188038] font-bold">Step 4 (400ms Final)</span>
+<span class="text-[9px] bg-[#E6F4EA] text-[#188038] px-1 rounded font-mono">HYDRATED</span>
+</div>
+<div class="font-mono text-xl font-bold text-[#0A0A0C]">307.7M</div>
+<p class="text-[10px] text-[#71717A]">Complete metric anchor locked</p>
+</div>
+</div>
+</div>
+<!-- Strip 3: Bar Grow with 12ms Stagger -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-[#E6E6E6]">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-[#0A0A0C] text-white text-[10px] font-mono font-bold">KEYFRAME 03</span>
+<h3 class="text-sm font-semibold text-[#0A0A0C]">Bar Grow Staggered Histogram</h3>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">ScaleY baseline expansion from bottom origin with progressive cascade.</p>
+</div>
+<div class="flex items-center gap-2 font-mono text-xs text-[#3E5270] bg-[#F5F5F5] px-3 py-1.5 rounded-lg border border-[#E6E6E6]">
+<span>duration: 300ms</span>
+<span>·</span>
+<span>12ms stagger</span>
+<span>·</span>
+<span>transform-origin: bottom</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+<!-- Technical diagram description -->
+<div class="lg:col-span-5 space-y-2 text-xs text-[#71717A]">
+<p class="leading-relaxed">
+                Bars rise strictly from the baseline (<code class="text-[#3E5270] font-mono">transform-origin: bottom</code>). Each daily bar column introduces a 12ms stagger delay offset to communicate organic data ingestion.
+              </p>
+<div class="p-2.5 rounded-lg bg-[#FAFAFA] border border-[#E6E6E6] font-mono text-[11px] space-y-1">
+<div>bar[0]: delay 0ms  | scaleY: 0 → 1</div>
+<div>bar[1]: delay 12ms | scaleY: 0 → 1</div>
+<div>bar[2]: delay 24ms | scaleY: 0 → 1</div>
+<div>bar[3]: delay 36ms | scaleY: 0 → 1</div>
+</div>
+</div>
+<!-- Live Bar Chart Stagger Simulation -->
+<div class="lg:col-span-7 bg-[#FAFAFA] border border-[#E0E0E0] rounded-xl p-4">
+<div class="flex items-end justify-between h-28 pt-2 pb-1 border-b border-[#E0E0E0] px-4 gap-3">
+<!-- Bar 1 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#1967D2] rounded-t-sm h-[45%] anim-bar-grow-1"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Mon</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#AECBFA] border border-[#1967D2]/20 rounded-t-sm h-[70%] anim-bar-grow-2"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Tue</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#E37400] rounded-t-sm h-[90%] anim-bar-grow-3"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Wed</span>
+</div>
+<!-- Bar 4 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#9334E6] rounded-t-sm h-[60%] anim-bar-grow-4"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Thu</span>
+</div>
+<!-- Bar 5 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#3F3F46] rounded-t-sm h-[80%] anim-bar-grow-2"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Fri</span>
+</div>
+<!-- Bar 6 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#1967D2] rounded-t-sm h-[35%] anim-bar-grow-3"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Sat</span>
+</div>
+<!-- Bar 7 -->
+<div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+<div class="w-full bg-[#188038] rounded-t-sm h-[95%] anim-bar-grow-4"></div>
+<span class="text-[9px] font-mono text-[#71717A]">Sun</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 text-[10px] font-mono text-[#828283]">
+<span>BASELINE ORIGIN: 0.0</span>
+<span class="text-[#1967D2]">300MS ANIMATION DURATION</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Strip 4 & 5 Dual Layout (Row Expand + Pixel Assembly) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+<!-- Strip 4: Row Expand / Accordion -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex items-center justify-between pb-3 border-b border-[#E6E6E6]">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-[#0A0A0C] text-white text-[10px] font-mono font-bold">KEYFRAME 04</span>
+<h3 class="text-sm font-semibold text-[#0A0A0C]">Row Expand &amp; Chevron</h3>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Accordion session breakdown revelation.</p>
+</div>
+<span class="font-mono text-[11px] text-[#3E5270] bg-[#F5F5F5] px-2 py-1 rounded">200ms cubic</span>
+</div>
+<!-- Interactive Accordion Mockup -->
+<div class="border border-[#E6E6E6] rounded-xl overflow-hidden bg-white">
+<div class="p-3 bg-[#FAFAFA] flex items-center justify-between select-none">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-sm text-[#0A0A0C] anim-chevron">chevron_right</span>
+<span class="text-xs font-medium text-[#0A0A0C]">run-2025-02-23-0891 (Sonnet 3.5)</span>
+</div>
+<span class="text-[11px] font-mono text-[#1967D2] font-semibold">4.8M tokens</span>
+</div>
+<!-- Expanding Drawer -->
+<div class="anim-accordion-body border-t border-[#E6E6E6] bg-white px-4 py-2 space-y-2 text-xs">
+<div class="flex items-center justify-between text-[11px] font-mono text-[#71717A] pt-1">
+<span>Input: 3,912,410</span>
+<span>Cache: 3,420,000 (87%)</span>
+<span>Output: 12,940</span>
+</div>
+<div class="p-2 rounded bg-[#F5F5F5] font-mono text-[10px] text-[#3E5270]">
+                  Session journal hash: 0x9b72a...verified ok
+                </div>
+</div>
+</div>
+<p class="text-[11px] text-[#71717A]">
+              Rotation: <code class="font-mono text-[#3E5270]">0° → 90°</code> with synchronized height expansion easing <code class="font-mono text-[#3E5270]">cubic-bezier(0.4, 0, 0.2, 1)</code>.
+            </p>
+</div>
+<!-- Strip 5: Pixel-A Assembly & Ring Spinner -->
+<div class="bg-white border border-[#E0E0E0] rounded-2xl p-5 shadow-sm space-y-4">
+<div class="flex items-center justify-between pb-3 border-b border-[#E6E6E6]">
+<div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-[#0A0A0C] text-white text-[10px] font-mono font-bold">KEYFRAME 05</span>
+<h3 class="text-sm font-semibold text-[#0A0A0C]">Pixel-A Assembly &amp; Spinner</h3>
+</div>
+<p class="text-xs text-[#71717A] mt-0.5">Signature CLI pixel convergence + sync ring.</p>
+</div>
+<span class="font-mono text-[11px] text-[#3E5270] bg-[#F5F5F5] px-2 py-1 rounded">900ms + 1s</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Pixel Assembly Showcase -->
+<div class="p-4 rounded-xl border border-[#E6E6E6] bg-[#FAFAFA] flex flex-col items-center justify-center space-y-3">
+<div class="w-16 h-16 relative flex items-center justify-center">
+<!-- Pixel 7-Color Grid Group -->
+<div class="w-3.5 h-3.5 absolute -top-1 left-6 bg-[#9334E6] rounded-xs pixel-p1"></div>
+<div class="w-3.5 h-3.5 absolute top-3.5 left-2 bg-[#1967D2] rounded-xs pixel-p2"></div>
+<div class="w-3.5 h-3.5 absolute top-3.5 right-2 bg-[#E37400] rounded-xs pixel-p3"></div>
+<div class="w-3.5 h-3.5 absolute top-4 left-6 bg-[#0A0A0C] rounded-xs pixel-p4"></div>
+<div class="w-3.5 h-3.5 absolute bottom-1 left-2 bg-[#188038] rounded-xs pixel-p5"></div>
+<div class="w-3.5 h-3.5 absolute bottom-1 right-2 bg-[#4285F4] rounded-xs pixel-p6"></div>
+<div class="w-3.5 h-3.5 absolute bottom-1 left-6 bg-[#D93025] rounded-xs pixel-p7"></div>
+</div>
+<div class="text-center">
+<span class="text-xs font-semibold text-[#0A0A0C] block">Pixel-A Assembly</span>
+<span class="text-[10px] font-mono text-[#71717A]">7-tone inward float</span>
+</div>
+</div>
+<!-- Rescan Ring Spinner Showcase -->
+<div class="p-4 rounded-xl border border-[#E6E6E6] bg-[#FAFAFA] flex flex-col items-center justify-center space-y-3">
+<div class="w-16 h-16 flex items-center justify-center">
+<div class="w-8 h-8 rounded-full border-2 border-[#E6E6E6] border-t-[#0A0A0C] border-r-[#0A0A0C] anim-spinner"></div>
+</div>
+<div class="text-center">
+<span class="text-xs font-semibold text-[#0A0A0C] block">Rescan Spinner</span>
+<span class="text-[10px] font-mono text-[#71717A]">2px ring · 1s linear loop</span>
+</div>
+</div>
+</div>
+<p class="text-[11px] text-[#71717A]">
+              Executed whenever the native daemon triggers <code class="font-mono text-[#3E5270]">Rescan Sessions</code> or SQLite database vacuum routines.
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer System Signoff -->
+<footer class="pt-6 pb-8 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between text-xs text-[#71717A] gap-4 font-mono">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-[#188038]"></div>
+<span class="text-[#0A0A0C] font-medium">Antigravity Usage v3 Core</span>
+<span>—</span>
+<span>Engineered for Desktop Precision (1440px Architecture)</span>
+</div>
+<div class="flex items-center gap-4">
+<span>Google Sans + Cascadia / JetBrains Mono</span>
+<span>·</span>
+<span class="text-[#0A0A0C]">Antigravity CLI Protocol Verified</span>
+</div>
+</footer>
+</div>
+</body></html>

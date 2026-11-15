@@ -8,3 +8,8 @@ config/config.json
 config/pricing.json
 graphify-out/
 .python-version
+.agy/
+.code-review-graph/
+src-tauri/target/
+ui/node_modules/
+ui/dist/

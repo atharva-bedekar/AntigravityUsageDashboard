@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings — Sources &amp; Pricing — Antigravity Usage</title>
+<!-- Google Fonts: Public Sans (Design System theme), Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration verbatim -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {},
+          "borderRadius": {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          "spacing": {},
+          "fontFamily": {
+            "headline": ["Public Sans", "sans-serif"],
+            "display": ["Public Sans", "sans-serif"],
+            "body": ["Public Sans", "sans-serif"],
+            "label": ["Public Sans", "sans-serif"],
+            "mono": ["JetBrains Mono", "Cascadia Mono", "Google Sans Code", "monospace"]
+          },
+          "fontSize": {}
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Public Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', 'Cascadia Mono', monospace;
+      font-feature-settings: 'tnum' 1;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+  </style>
+</head>
+<body class="bg-neutral-50 text-neutral-900 h-screen w-screen flex flex-col overflow-hidden text-sm">
+<!-- ========================================================================= -->
+<!-- 1. TOP WINDOW TITLEBAR & SYSTEM CHROME (Shared Components: TopNavBar)      -->
+<!-- ========================================================================= -->
+<header class="bg-neutral-50 border-b border-neutral-200 docked full-width top-0 h-8 flex justify-between items-center w-full px-3 select-none shrink-0 z-30">
+<!-- Left: App Icon & Brand + File Menus -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 font-headline text-xs font-medium text-neutral-900 tracking-wide">
+<!-- Antigravity App Glyph -->
+<div class="w-4 h-4 rounded bg-neutral-950 text-white flex items-center justify-center font-bold text-[10px] leading-none shadow-xs">
+          A
+        </div>
+<span class="font-semibold tracking-tight text-neutral-950">Antigravity Usage</span>
+</div>
+<!-- Menu Items -->
+<nav class="hidden sm:flex items-center gap-2 pl-3 border-l border-neutral-200 text-xs text-neutral-600">
+<button class="px-1.5 py-0.5 rounded hover:bg-neutral-200/70 text-neutral-700 transition-colors duration-150">Usage</button>
+<button class="px-1.5 py-0.5 rounded hover:bg-neutral-200/70 text-neutral-700 transition-colors duration-150">View</button>
+<button class="px-1.5 py-0.5 rounded hover:bg-neutral-200/70 text-neutral-700 transition-colors duration-150">Window</button>
+<button class="px-1.5 py-0.5 rounded hover:bg-neutral-200/70 text-neutral-700 transition-colors duration-150">Help</button>
+</nav>
+</div>
+<!-- Center: IPC Address Bar / Location Pill -->
+<div class="hidden md:flex items-center bg-white border border-neutral-200/90 rounded-full px-3 py-0.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-[11px] font-mono-code text-neutral-600 gap-1.5">
+<span class="material-symbols-outlined text-[13px] text-neutral-400">link</span>
+<span class="text-neutral-400">antigravity-runtime://</span>
+<span class="text-neutral-900 font-medium">settings/sources-pricing</span>
+</div>
+<!-- Right: Windows Controls (Trailing Icon Actions) -->
+<div class="flex items-center">
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors duration-150" title="Minimize">
+<span class="material-symbols-outlined text-[15px]">minimize</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 transition-colors duration-150" title="Maximize">
+<span class="material-symbols-outlined text-[14px]">crop_square</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-neutral-600 hover:bg-red-500 hover:text-white transition-colors duration-150" title="Close">
+<span class="material-symbols-outlined text-[15px]">close</span>
+</button>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- 2. MAIN APPLICATION WORKSPACE (Sidebar + Content Panel)                   -->
+<!-- ========================================================================= -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- SIDEBAR (Shared Components: SideNavBar - docked left, width 280px) -->
+<aside class="w-72 bg-neutral-50 border-r border-neutral-200 flex flex-col justify-between h-full p-3 shrink-0 select-none overflow-y-auto">
+<!-- Top Group -->
+<div class="space-y-4">
+<!-- Sidebar Brand & Identity Header -->
+<div class="flex items-center justify-between pb-1 border-b border-neutral-200/60">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-1 ring-neutral-300">
+              A
+            </div>
+<div>
+<div class="font-headline text-sm font-semibold text-neutral-950 tracking-tight leading-none">Antigravity</div>
+<div class="text-[11px] text-neutral-500 font-medium tracking-tight mt-0.5">Usage v3</div>
+</div>
+</div>
+<!-- Navigation History buttons -->
+<div class="flex items-center gap-0.5 text-neutral-500">
+<button class="p-1 rounded hover:bg-neutral-200 hover:text-neutral-900 transition-colors">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+</button>
+<button class="p-1 rounded hover:bg-neutral-200 hover:text-neutral-900 transition-colors">
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- CTA: Rescan Sessions Pill Button -->
+<button class="w-full flex items-center justify-between bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-800 text-xs font-medium py-1.5 px-3 rounded-lg shadow-sm hover:shadow transition-all duration-150">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-neutral-500">refresh</span>
+<span>Rescan Sessions</span>
+</div>
+<span class="font-mono-code text-[11px] text-neutral-400">20:25</span>
+</button>
+<!-- Primary Navigation Tabs (Shared Components JSON) -->
+<div class="space-y-0.5">
+<div class="px-2 pt-1 pb-1 text-[11px] font-semibold text-neutral-400 tracking-wider uppercase">Navigation</div>
+<!-- Tab 1: Dashboard -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Tab 2: Daily Usage -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<!-- Tab 3: Sessions & Runs -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span>Sessions &amp; Runs</span>
+</a>
+<!-- Tab 4: Projects -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span>Projects</span>
+</a>
+<!-- Tab 5: Models Breakdown -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+</div>
+<!-- Section: SOURCES -->
+<div class="space-y-1 pt-2 border-t border-neutral-200/60">
+<div class="px-2 text-[11px] font-semibold text-neutral-400 tracking-wider uppercase flex justify-between items-center">
+<span>Sources</span>
+<span class="text-[10px] text-neutral-400">2 active</span>
+</div>
+<div class="flex items-center justify-between px-3 py-1.5 text-xs text-neutral-700 rounded hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1 py-0.2 bg-neutral-200 text-neutral-800 font-mono-code font-bold text-[9px] rounded">APP</span>
+<span class="text-neutral-700">Antigravity App</span>
+</div>
+<span class="font-mono-code text-[11px] text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full border border-neutral-200/50">6</span>
+</div>
+<div class="flex items-center justify-between px-3 py-1.5 text-xs text-neutral-700 rounded hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="px-1 py-0.2 bg-purple-100 text-purple-700 font-mono-code font-bold text-[9px] rounded border border-purple-200">CLI</span>
+<span class="text-neutral-700">Antigravity CLI</span>
+</div>
+<span class="font-mono-code text-[11px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-200/60">114</span>
+</div>
+</div>
+<!-- Section: RECENT SESSIONS -->
+<div class="space-y-1 pt-2 border-t border-neutral-200/60">
+<div class="px-2 text-[11px] font-semibold text-neutral-400 tracking-wider uppercase">Recent Sessions</div>
+<div class="px-3 py-1 text-xs text-neutral-600 hover:text-neutral-900 truncate cursor-pointer flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="truncate">build-kernel-optimizer-v2</span>
+</div>
+<div class="px-3 py-1 text-xs text-neutral-600 hover:text-neutral-900 truncate cursor-pointer flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="truncate">claude-agentic-transcribe</span>
+</div>
+<div class="px-3 py-1 text-xs text-neutral-500 hover:text-neutral-900 truncate cursor-pointer flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-300"></span>
+<span class="truncate font-mono-code text-[11px]">89f1a0e·gemini-flash</span>
+</div>
+</div>
+</div>
+<!-- Bottom Pinned Items (Footer tabs: CLI Sync Terminal & Settings ACTIVE) -->
+<div class="pt-3 border-t border-neutral-200 space-y-1">
+<!-- CLI Sync Terminal -->
+<a class="flex items-center gap-3 text-neutral-600 rounded-lg px-3 py-2 font-normal text-sm hover:bg-neutral-100 hover:text-neutral-950 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+<span>CLI Sync Terminal</span>
+</a>
+<!-- Settings (CURRENTLY ACTIVE IN ACCORDANCE WITH SOURCES & PRICING INTENT) -->
+<a class="flex items-center gap-3 bg-white text-neutral-950 font-medium rounded-lg px-3 py-2 border border-neutral-200/90 shadow-sm transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-[18px] text-neutral-900" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="flex-1">Settings</span>
+<span class="w-1.5 h-1.5 rounded-full bg-neutral-900"></span>
+</a>
+</div>
+</aside>
+<!-- ======================================================================= -->
+<!-- MAIN CONTENT CANVAS CONTAINER                                            -->
+<!-- ======================================================================= -->
+<main class="flex-1 bg-neutral-50 p-3 sm:p-4 overflow-hidden flex flex-col">
+<!-- White Content Panel with 16px radius and crisp 1px solid border -->
+<div class="flex-1 bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col overflow-hidden">
+<!-- TOP BREADCRUMB & TOOLBAR ROW -->
+<div class="h-12 border-b border-neutral-100 px-5 flex items-center justify-between shrink-0 bg-white">
+<!-- Breadcrumb navigation -->
+<div class="flex items-center gap-2 text-xs">
+<span class="text-neutral-500 font-medium">Settings</span>
+<span class="text-neutral-300">/</span>
+<span class="text-neutral-900 font-semibold tracking-tight">Sources &amp; Pricing</span>
+<span class="ml-2 px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-[10px] font-mono-code border border-neutral-200">v3-runtime</span>
+</div>
+<!-- Utility & Action Icons -->
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors" title="Settings Documentation">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors" title="Reset Section Defaults">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+<div class="h-4 w-px bg-neutral-200 mx-1"></div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors" title="Toggle Sidebar">
+<span class="material-symbols-outlined text-[18px]">view_sidebar</span>
+</button>
+</div>
+</div>
+<!-- PROMINENT SEARCH BAR (Echoing CLI Composer / Filter Bar) -->
+<div class="px-5 pt-4 pb-3 shrink-0">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-neutral-400 text-[18px] pointer-events-none">search</span>
+<input class="w-full bg-[#F5F5F5] hover:bg-neutral-100 focus:bg-white text-neutral-900 placeholder-neutral-400 text-xs pl-10 pr-24 py-2.5 rounded-xl border border-neutral-200 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 transition-all outline-none" placeholder="Search settings… (echoing CLI 'Search: type to filter...')" type="text"/>
+<div class="absolute right-3 flex items-center gap-1.5">
+<span class="text-[10px] text-neutral-400 font-mono-code bg-white px-1.5 py-0.5 rounded border border-neutral-200 shadow-2xs">Ctrl+F</span>
+<span class="text-[10px] text-neutral-400 font-mono-code bg-white px-1 py-0.5 rounded border border-neutral-200 shadow-2xs">/</span>
+</div>
+</div>
+</div>
+<!-- TWO-COLUMN SETTINGS WORKSPACE -->
+<div class="flex-1 flex overflow-hidden px-5 pb-3 gap-6">
+<!-- LEFT COLUMN: Settings Sub-Navigation (~200px) -->
+<div class="w-52 shrink-0 py-1 space-y-1 select-none border-r border-neutral-100 pr-3">
+<div class="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider px-2 mb-2">Sections</div>
+<!-- Active: Sources -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white border border-neutral-200 text-neutral-950 font-semibold text-xs shadow-xs transition-all">
+<div class="flex items-center gap-2">
+<span class="text-[#4285F4] font-bold text-sm leading-none">›</span>
+<span>Sources</span>
+</div>
+<span class="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></span>
+</button>
+<!-- Pricing Section Link -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>Pricing</span>
+</div>
+<span class="text-[10px] text-neutral-400 font-mono-code">Tariffs</span>
+</button>
+<!-- Money & Currencies -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>Money &amp; Currencies</span>
+</div>
+</button>
+<!-- Display & Theme -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>Display &amp; Theme</span>
+</div>
+</button>
+<!-- Refresh & Engine -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>Refresh &amp; Engine</span>
+</div>
+</button>
+<!-- Privacy & Telemetry -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>Privacy &amp; Telemetry</span>
+</div>
+</button>
+<!-- About & Updates -->
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 text-xs font-normal transition-all">
+<div class="flex items-center gap-2 pl-3">
+<span>About &amp; Updates</span>
+</div>
+<span class="text-[9px] px-1 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">v3.0.4</span>
+</button>
+</div>
+<!-- RIGHT COLUMN: Main Settings Content Panels (Scrollable) -->
+<div class="flex-1 overflow-y-auto pr-3 space-y-6">
+<!-- ============================================================= -->
+<!-- CARD 1: SOURCES SETTINGS                                      -->
+<!-- ============================================================= -->
+<section class="bg-white rounded-xl border border-neutral-200 p-5 shadow-xs space-y-5">
+<!-- Card Header -->
+<div class="flex items-start justify-between border-b border-neutral-100 pb-3">
+<div>
+<h2 class="text-sm font-semibold text-neutral-950 tracking-tight flex items-center gap-2">
+<span>Sources</span>
+<span class="px-1.5 py-0.2 bg-neutral-100 text-neutral-700 text-[10px] font-mono-code font-normal rounded border border-neutral-200">transcripts &amp; db</span>
+</h2>
+<p class="text-xs text-neutral-500 mt-0.5">Configure local folders and database sync for transcript ingestion.</p>
+</div>
+<span class="material-symbols-outlined text-neutral-400 text-[20px]">folder_special</span>
+</div>
+<!-- Setting Row 1: Antigravity App folder -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+<div class="max-w-md">
+<div class="text-xs font-medium text-neutral-900">Antigravity App folder</div>
+<div class="text-[11px] text-neutral-500">Where the App keeps conversations and local sessions.</div>
+</div>
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<div class="flex items-center bg-[#F5F5F5] border border-neutral-200 rounded-lg px-2.5 py-1 text-xs font-mono-code text-[#3E5270] gap-1.5 shadow-2xs">
+<span>~/.gemini/antigravity/brain</span>
+<button class="text-neutral-400 hover:text-neutral-800 transition-colors" title="Copy path">
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+</button>
+</div>
+<button class="px-2.5 py-1 text-xs font-medium bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-lg transition-colors">
+                    Browse…
+                  </button>
+<!-- Toggle Switch ON -->
+<button aria-pressed="true" class="w-9 h-5 bg-neutral-900 rounded-full relative p-0.5 transition-colors duration-200 focus:outline-none" type="button">
+<span class="w-4 h-4 bg-white rounded-full block transform translate-x-4 transition-transform duration-200 shadow-xs"></span>
+</button>
+</div>
+</div>
+<!-- Setting Row 2: Antigravity CLI folder -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-neutral-100">
+<div class="max-w-md">
+<div class="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
+<span>Antigravity CLI folder</span>
+<span class="text-[9px] bg-purple-100 text-purple-800 px-1 rounded font-mono-code">CLI</span>
+</div>
+<div class="text-[11px] text-neutral-500">Where the CLI keeps transcripts and streaming run logs.</div>
+</div>
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<div class="flex items-center bg-[#F5F5F5] border border-neutral-200 rounded-lg px-2.5 py-1 text-xs font-mono-code text-[#3E5270] gap-1.5 shadow-2xs">
+<span>~/.gemini/antigravity-cli/brain</span>
+<button class="text-neutral-400 hover:text-neutral-800 transition-colors" title="Copy path">
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+</button>
+</div>
+<button class="px-2.5 py-1 text-xs font-medium bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-lg transition-colors">
+                    Browse…
+                  </button>
+<!-- Toggle Switch ON -->
+<button aria-pressed="true" class="w-9 h-5 bg-neutral-900 rounded-full relative p-0.5 transition-colors duration-200 focus:outline-none" type="button">
+<span class="w-4 h-4 bg-white rounded-full block transform translate-x-4 transition-transform duration-200 shadow-xs"></span>
+</button>
+</div>
+</div>
+<!-- Setting Row 3: Custom folders -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-neutral-100">
+<div class="max-w-md">
+<div class="text-xs font-medium text-neutral-900">Custom folders</div>
+<div class="text-[11px] text-neutral-500">Add additional workspace folders or historical telemetry logs.</div>
+</div>
+<div class="flex items-center gap-3 self-start sm:self-auto">
+<span class="text-[11px] text-neutral-400 italic">No custom folders added</span>
+<button class="px-2.5 py-1 text-xs font-medium bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-200 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span>Add folder</span>
+</button>
+</div>
+</div>
+<!-- Setting Row 4: Read conversation_summaries.db -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-neutral-100">
+<div class="max-w-xl">
+<div class="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
+<span>Read App titles &amp; projects from conversation_summaries.db</span>
+<span class="text-[10px] bg-emerald-50 text-emerald-700 px-1 rounded font-mono-code">sqlite</span>
+</div>
+<div class="text-[11px] text-neutral-500">Opened read-only. Turn off to show IDs only without parsing metadata strings.</div>
+</div>
+<div class="flex items-center self-start sm:self-auto">
+<!-- Toggle Switch ON -->
+<button aria-pressed="true" class="w-9 h-5 bg-neutral-900 rounded-full relative p-0.5 transition-colors duration-200 focus:outline-none" type="button">
+<span class="w-4 h-4 bg-white rounded-full block transform translate-x-4 transition-transform duration-200 shadow-xs"></span>
+</button>
+</div>
+</div>
+<!-- Card 1 Footer -->
+<div class="pt-3 border-t border-neutral-100 flex items-center justify-between">
+<button class="text-[11px] font-medium text-neutral-500 hover:text-neutral-900 flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[13px]">restart_alt</span>
+<span>Restore defaults</span>
+</button>
+<div class="text-[10px] text-neutral-400 font-mono-code">SYNC STATUS: LIVE WATCHING</div>
+</div>
+</section>
+<!-- ============================================================= -->
+<!-- CARD 2: PRICING SETTINGS                                      -->
+<!-- ============================================================= -->
+<section class="bg-white rounded-xl border border-neutral-200 p-5 shadow-xs space-y-5">
+<!-- Card Header -->
+<div class="flex items-start justify-between border-b border-neutral-100 pb-3">
+<div>
+<h2 class="text-sm font-semibold text-neutral-950 tracking-tight flex items-center gap-2">
+<span>Pricing</span>
+<span class="px-1.5 py-0.2 bg-neutral-100 text-neutral-700 text-[10px] font-mono-code font-normal rounded border border-neutral-200">catalog &amp; rates</span>
+</h2>
+<p class="text-xs text-neutral-500 mt-0.5">Configured tariffs and pricing catalog used for simulated billing calculations.</p>
+</div>
+<span class="material-symbols-outlined text-neutral-400 text-[20px]">payments</span>
+</div>
+<!-- Setting Row 1: Default pricing model -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+<div>
+<div class="text-xs font-medium text-neutral-900">Default pricing model</div>
+<div class="text-[11px] text-neutral-500">Default benchmark model applied to generic token rollups.</div>
+</div>
+<div class="relative inline-block text-left self-start sm:self-auto">
+<button class="flex items-center gap-2 bg-white hover:bg-neutral-50 border border-neutral-200 rounded-full px-3 py-1.5 text-xs text-neutral-800 shadow-2xs">
+<span class="text-neutral-400 font-mono-code">≈</span>
+<span class="font-medium">Gemini 3.8 Flash</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="material-symbols-outlined text-[15px] text-neutral-400">arrow_drop_down</span>
+</button>
+</div>
+</div>
+<!-- Setting Row 2: Price catalog file -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-neutral-100">
+<div class="max-w-md">
+<div class="text-xs font-medium text-neutral-900">Price catalog file</div>
+<div class="text-[11px] text-neutral-500">Local JSON schema defining historical and active token rates.</div>
+</div>
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<div class="flex items-center bg-[#F5F5F5] border border-neutral-200 rounded-lg px-2.5 py-1 text-xs font-mono-code text-[#3E5270] shadow-2xs">
+<span>~/AppData/Roaming/antigravity-usage/pricing.json</span>
+</div>
+<button class="px-2.5 py-1 text-xs font-medium bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-lg transition-colors">
+                    Browse…
+                  </button>
+<button class="px-2.5 py-1 text-xs font-medium bg-white hover:bg-neutral-100 text-neutral-900 border border-neutral-200 rounded-lg flex items-center gap-1 shadow-2xs transition-colors">
+<span>Open in editor</span>
+<span class="material-symbols-outlined text-[13px] text-neutral-500">open_in_new</span>
+</button>
+</div>
+</div>
+<!-- Setting Row 3: Embedded Read-Only Price Catalog Data Table -->
+<div class="pt-2">
+<div class="flex items-center justify-between mb-2">
+<div class="text-xs font-semibold text-neutral-900 uppercase tracking-wider text-[11px]">Active Price Catalog</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] text-neutral-500 font-mono-code">4 models loaded</span>
+<button class="text-neutral-400 hover:text-neutral-700">
+<span class="material-symbols-outlined text-[15px]">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Table Component with Clean Borders -->
+<div class="border border-neutral-200 rounded-xl overflow-hidden bg-white">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-neutral-50 border-b border-neutral-200 text-[10px] font-semibold text-neutral-500 uppercase font-mono-code tracking-wider">
+<th class="py-2.5 px-3">Model</th>
+<th class="py-2.5 px-3">Vendor</th>
+<th class="py-2.5 px-3">From</th>
+<th class="py-2.5 px-3">Until</th>
+<th class="py-2.5 px-3 text-right">
+<span class="text-[#1967D2]">New / 1M</span>
+</th>
+<th class="py-2.5 px-3 text-right">
+<span class="text-[#3E74B8]">Cached / 1M</span>
+</th>
+<th class="py-2.5 px-3 text-right">
+<span class="text-[#E37400]">Output / 1M</span>
+</th>
+<th class="py-2.5 px-3 text-center">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-neutral-100 font-mono-code text-[11px]">
+<!-- Row 1: Gemini 3.8 Flash -->
+<tr class="hover:bg-neutral-50/70 transition-colors">
+<td class="py-2.5 px-3 font-body font-medium text-neutral-900 flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+<span>Gemini 3.8 Flash</span>
+</td>
+<td class="py-2.5 px-3 text-neutral-500 font-body">Google</td>
+<td class="py-2.5 px-3 text-neutral-600">2026-09-01</td>
+<td class="py-2.5 px-3 text-neutral-400">—</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$0.75</td>
+<td class="py-2.5 px-3 text-right text-neutral-600">$0.075</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$3.75</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Verified
+                          </span>
+</td>
+</tr>
+<!-- Row 2: Gemini 3.5 Flash-Lite -->
+<tr class="hover:bg-neutral-50/70 transition-colors">
+<td class="py-2.5 px-3 font-body font-medium text-neutral-900 flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+<span>Gemini 3.5 Flash-Lite</span>
+</td>
+<td class="py-2.5 px-3 text-neutral-500 font-body">Google</td>
+<td class="py-2.5 px-3 text-neutral-600">2026-06-01</td>
+<td class="py-2.5 px-3 text-neutral-400">—</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$0.25</td>
+<td class="py-2.5 px-3 text-right text-neutral-600">$0.025</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$1.25</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Verified
+                          </span>
+</td>
+</tr>
+<!-- Row 3: Gemini 3.8 Pro -->
+<tr class="hover:bg-neutral-50/70 transition-colors">
+<td class="py-2.5 px-3 font-body font-medium text-neutral-900 flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+<span>Gemini 3.8 Pro</span>
+</td>
+<td class="py-2.5 px-3 text-neutral-500 font-body">Google</td>
+<td class="py-2.5 px-3 text-neutral-600">2026-09-01</td>
+<td class="py-2.5 px-3 text-neutral-400">—</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$2.00</td>
+<td class="py-2.5 px-3 text-right text-neutral-600">$0.20</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$10.00</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                            Approximate
+                          </span>
+</td>
+</tr>
+<!-- Row 4: Claude Opus 5.5 -->
+<tr class="hover:bg-neutral-50/70 transition-colors">
+<td class="py-2.5 px-3 font-body font-medium text-neutral-900 flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+<span>Claude Opus 5.5</span>
+</td>
+<td class="py-2.5 px-3 text-neutral-500 font-body">Anthropic</td>
+<td class="py-2.5 px-3 text-neutral-600">2026-08-01</td>
+<td class="py-2.5 px-3 text-neutral-400">—</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$5.00</td>
+<td class="py-2.5 px-3 text-right text-neutral-600">$0.50</td>
+<td class="py-2.5 px-3 text-right font-medium text-neutral-900">$25.00</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Verified
+                          </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Catalog Informative Captions -->
+<div class="mt-2.5 space-y-1 text-[11px] text-neutral-500">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[13px] text-neutral-400">info</span>
+<span>Edit the catalog file to change prices.</span>
+</div>
+<div class="flex items-center gap-1.5 text-neutral-400">
+<span class="font-mono-code text-neutral-500">≈</span>
+<span>If no price covers a date, the nearest earlier price is used and marked ≈.</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- ============================================================= -->
+<!-- CLI-STYLE MONO KEY HINTS BANNER / FOOTER (Inside Panel)       -->
+<!-- ============================================================= -->
+<div class="h-9 border-t border-neutral-100 bg-[#FAFAFA] px-5 flex items-center justify-between shrink-0 font-mono-code text-[11px] text-neutral-600">
+<div class="flex items-center gap-5">
+<div>
+<span class="text-[#4285F4] font-semibold">↑/↓</span> Navigate
+            </div>
+<div>
+<span class="text-[#4285F4] font-semibold">Enter</span> Edit
+            </div>
+<div>
+<span class="text-[#4285F4] font-semibold">Esc</span> Back
+            </div>
+<div class="text-neutral-400 hidden sm:inline">
+<span class="text-[#4285F4] font-semibold">Tab</span> Next field
+            </div>
+</div>
+<div class="text-neutral-400 flex items-center gap-2">
+<span>CONFIG AUTO-SAVED</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- ========================================================================= -->
+<!-- 3. BOTTOM APPLICATION STATUS BAR (Full width docked)                       -->
+<!-- ========================================================================= -->
+<footer class="h-6 bg-neutral-50 border-t border-neutral-200/90 px-3 flex items-center justify-between text-[11px] select-none shrink-0 z-30">
+<!-- Left: Scan telemetry metrics -->
+<div class="flex items-center gap-2 font-mono-code text-neutral-600">
+<span class="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<!-- Right: System & Engine Environment Status -->
+<div class="flex items-center gap-3 font-mono-code text-neutral-500 text-[10px]">
+<span>UTC+5:30</span>
+<span class="text-neutral-300">|</span>
+<span>Light Theme</span>
+<span class="text-neutral-300">|</span>
+<span class="text-neutral-700 font-medium">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</body></html>
