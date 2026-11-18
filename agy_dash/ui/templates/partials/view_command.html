@@ -1,76 +1,83 @@
-<div class="kpi-strip">
-  {% for kpi in vm.token_kpis %}
-    <div class="kpi-card">
-      <div class="lbl"><span>{{ kpi.icon }} {{ kpi.lbl }}</span></div>
-      <div class="val">{{ kpi.val }}</div>
-      <div class="sub">{{ kpi.sub }}</div>
+<dl class="kpi-strip">
+  {% for kpi in vm.token_kpis + vm.econ_kpis %}
+    <div class="kpi-card{% if loop.first %} lead-figure{% endif %}">
+      <dt class="lbl">{{ kpi.lbl }}</dt>
+      <dd class="val">{{ kpi.val }}</dd>
+      <dd class="sub">{{ kpi.sub }}</dd>
     </div>
   {% endfor %}
-</div>
+</dl>
 
-<div class="kpi-strip">
-  {% for kpi in vm.econ_kpis %}
-    <div class="kpi-card">
-      <div class="lbl"><span>{{ kpi.icon }} {{ kpi.lbl }}</span></div>
-      <div class="val">{{ kpi.val }}</div>
-      <div class="sub">{{ kpi.sub }}</div>
-    </div>
-  {% endfor %}
-</div>
-
+<div class="notice-stack">
 {% if ctx.price_note %}
-  <div class="callout warning">
-    <b>Pricing Notice:</b> {{ ctx.price_note }}
-  </div>
+  <p class="callout warning"><b>Pricing note.</b> {{ ctx.price_note }}</p>
 {% endif %}
 
-<div class="callout">
-  <b>Equivalent API Cost:</b> Modeled consumption bill on a metered public API; real marginal spend inside subscription quota is zero. Subscription spend is reported independently.
-</div>
+<p class="callout"><b>Estimated API cost.</b> What this usage would cost at public API rates. Usage within the subscription quota has no additional charge.</p>
 
 {% if vm.waste %}
-  <div class="callout">
-    <b>Waste Proxy:</b> <code>{{ vm.waste.cost }}</code> ({{ vm.waste.tokens_at_risk }} tokens at risk) — {{ vm.waste.share_of_calls }} of calls failed across {{ vm.waste.failure_count }} errors. Order-of-magnitude engineering proxy, not an actual invoice.
-  </div>
+  <p class="callout"><b>Failure cost proxy.</b> At the average call cost, {{ vm.waste.failure_count }} errors represent roughly {{ vm.waste.cost }} and {{ vm.waste.tokens_at_risk }} tokens at risk. The proxy assumes one call per error ({{ vm.waste.share_of_calls }} of calls).</p>
 {% endif %}
+</div>
 
 <div class="bento-grid">
   <div class="bento-panel col-8">
-    <div class="panel-header"><div class="panel-title">Telemetry Burn Trajectory</div></div>
+    <div class="panel-header"><h2>Daily tokens and estimated API cost</h2></div>
     <div class="chart-box-tall" data-chart="chart-daily-burn"></div>
     <script type="application/json" id="chart-daily-burn">{{ vm.charts.daily_burn_chart | tojson }}</script>
   </div>
 
   <div class="bento-panel col-4">
-    <div class="panel-header"><div class="panel-title">Token Distribution</div></div>
-    <div class="chart-box" data-chart="chart-token-mix"></div>
-    <script type="application/json" id="chart-token-mix">{{ vm.charts.token_mix_chart | tojson }}</script>
-
-    <div style="margin-top:12px;"></div>
-    <div class="chart-box" data-chart="chart-cost-burden"></div>
-    <script type="application/json" id="chart-cost-burden">{{ vm.charts.cost_burden_chart | tojson }}</script>
+    <h2>Token and cost mix</h2>
+    <dl class="mix-meter">
+      <dt>Share of tokens</dt>
+      <dd aria-hidden="true">
+        {% for row in vm.mix_rows %}
+          <span style="--series-color: {{ row.color }}; width: {{ row.token_share }}%"></span>
+        {% endfor %}
+      </dd>
+      <dt class="panel-section">Share of estimated cost</dt>
+      <dd aria-hidden="true">
+        {% for row in vm.mix_rows %}
+          <span style="--series-color: {{ row.color }}; width: {{ row.cost_share }}%"></span>
+        {% endfor %}
+      </dd>
+    </dl>
+    <div class="table-container panel-section">
+      <table class="data-table" aria-label="Tokens and estimated cost by category">
+        <thead><tr><th>Category</th><th class="num">Tokens</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          {% for row in vm.mix_rows %}
+            <tr>
+              <td><span class="mix-key" style="--series-color: {{ row.color }}" aria-hidden="true"></span>{{ row.label }}</td>
+              <td class="num" title="{{ row.token_share }}%">{{ row.tokens }}</td>
+              <td class="num" title="{{ row.cost_share }}%">{{ row.cost }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div class="bento-panel col-7">
     <div class="panel-header">
-      <div class="panel-title">Workspace & Project Attribution</div>
-      <span style="font-size:0.7rem; color:var(--text-muted);">From history.jsonl</span>
+      <h2>Usage by project</h2>
+      <span class="panel-meta">From history.jsonl</span>
     </div>
     <div class="chart-box" data-chart="chart-workspace"></div>
     <script type="application/json" id="chart-workspace">{{ vm.charts.workspace_chart | tojson }}</script>
-    <div style="margin-top:12px;"></div>
-    <div class="table-container">
+    <div class="table-container panel-section">
       <table class="data-table">
         <thead>
-          <tr><th>Project</th><th>Sessions</th><th>Tokens</th><th>Equivalent Cost</th></tr>
+          <tr><th>Project</th><th class="num">Sessions</th><th class="num">Tokens</th><th class="num">Estimated cost</th></tr>
         </thead>
         <tbody>
           {% for r in vm.ws_rows %}
             <tr>
               <td class="mono cell-truncate" title="{{ r.project }}">{{ r.project }}</td>
-              <td class="mono">{{ r.sessions }}</td>
-              <td class="mono">{{ r.tokens }}</td>
-              <td class="mono">{{ r.cost }}</td>
+              <td class="num">{{ r.sessions }}</td>
+              <td class="num">{{ r.tokens }}</td>
+              <td class="num">{{ r.cost }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -79,25 +86,25 @@
   </div>
 
   <div class="bento-panel col-5">
-    <div class="panel-header"><div class="panel-title">Context Eviction Signals</div></div>
+    <div class="panel-header"><h2>Cache misses and model calls</h2></div>
     <div class="chart-box" data-chart="chart-cache-thrash"></div>
     <script type="application/json" id="chart-cache-thrash">{{ vm.charts.cache_thrash_chart | tojson }}</script>
   </div>
 
   <div class="bento-panel col-12">
-    <div class="panel-header"><div class="panel-title">Top Heaviest Active Days</div></div>
+    <div class="panel-header"><h2>Highest-usage days</h2></div>
     <div class="table-container">
       <table class="data-table">
         <thead>
-          <tr><th>Date</th><th>Tokens</th><th>Calls</th><th>Cost</th></tr>
+          <tr><th>Date</th><th class="num">Tokens</th><th class="num">Calls</th><th class="num">Cost</th></tr>
         </thead>
         <tbody>
           {% for d in vm.best_days %}
             <tr>
               <td class="mono">{{ d.date }}</td>
-              <td class="mono">{{ d.tokens }}</td>
-              <td class="mono">{{ d.calls }}</td>
-              <td class="mono">{{ d.cost }}</td>
+              <td class="num">{{ d.tokens }}</td>
+              <td class="num">{{ d.calls }}</td>
+              <td class="num">{{ d.cost }}</td>
             </tr>
           {% endfor %}
         </tbody>

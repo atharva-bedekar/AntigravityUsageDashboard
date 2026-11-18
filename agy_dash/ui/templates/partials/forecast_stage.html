@@ -1,40 +1,40 @@
-<div class="bento-panel col-12" style="margin-bottom:1rem; padding:0.75rem 1rem;">
-  <form hx-get="/partials/forecast-stage" hx-target="#forecast-stage-container" hx-swap="innerHTML" hx-include="#global-filter-form" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
-    <span style="font-family:var(--font-display); font-weight:700; font-size:0.8rem;">STAGE 1 // FORECAST CONTROLS:</span>
-    <select name="target" class="filter-input">
-      <option value="Total tokens" {% if vm.fc_params.target == 'Total tokens' %}selected{% endif %}>Target: Total Tokens</option>
-      <option value="Fresh input tokens" {% if vm.fc_params.target == 'Fresh input tokens' %}selected{% endif %}>Target: Fresh Input</option>
-      <option value="Cached input tokens" {% if vm.fc_params.target == 'Cached input tokens' %}selected{% endif %}>Target: Cached Input</option>
-      <option value="Output tokens" {% if vm.fc_params.target == 'Output tokens' %}selected{% endif %}>Target: Output</option>
-      <option value="Model calls" {% if vm.fc_params.target == 'Model calls' %}selected{% endif %}>Target: Model Calls</option>
-      <option value="API-equivalent cost" {% if vm.fc_params.target == 'API-equivalent cost' %}selected{% endif %}>Target: API Cost</option>
+<section class="control-bar" aria-labelledby="forecast-heading">
+  <h2 id="forecast-heading">Forecast</h2>
+  <form hx-get="/partials/forecast-stage" hx-target="#forecast-stage-container" hx-swap="innerHTML" hx-include="#global-filter-form" class="form-line">
+    <select name="target" aria-label="Forecast metric" class="filter-input">
+      <option value="Total tokens" {% if vm.fc_params.target == 'Total tokens' %}selected{% endif %}>Total tokens</option>
+      <option value="Fresh input tokens" {% if vm.fc_params.target == 'Fresh input tokens' %}selected{% endif %}>Fresh input</option>
+      <option value="Cached input tokens" {% if vm.fc_params.target == 'Cached input tokens' %}selected{% endif %}>Cached input</option>
+      <option value="Output tokens" {% if vm.fc_params.target == 'Output tokens' %}selected{% endif %}>Output</option>
+      <option value="Model calls" {% if vm.fc_params.target == 'Model calls' %}selected{% endif %}>Model calls</option>
+      <option value="API-equivalent cost" {% if vm.fc_params.target == 'API-equivalent cost' %}selected{% endif %}>Estimated API cost</option>
     </select>
 
-    <select name="method" class="filter-input">
-      <option value="Bootstrap resampling" {% if vm.fc_params.method == 'Bootstrap resampling' %}selected{% endif %}>Bootstrap Resampling</option>
-      <option value="Linear extrapolation (baseline)" {% if vm.fc_params.method == 'Linear extrapolation (baseline)' %}selected{% endif %}>Linear Baseline</option>
+    <select name="method" aria-label="Forecast method" class="filter-input">
+      <option value="Bootstrap resampling" {% if vm.fc_params.method == 'Bootstrap resampling' %}selected{% endif %}>Bootstrap resampling</option>
+      <option value="Linear extrapolation (baseline)" {% if vm.fc_params.method == 'Linear extrapolation (baseline)' %}selected{% endif %}>Linear baseline</option>
       <option value="Monte Carlo simulation" {% if vm.fc_params.method == 'Monte Carlo simulation' %}selected{% endif %}>Monte Carlo</option>
-      <option value="Holt linear trend" {% if vm.fc_params.method == 'Holt linear trend' %}selected{% endif %}>Holt Linear Trend</option>
+      <option value="Holt linear trend" {% if vm.fc_params.method == 'Holt linear trend' %}selected{% endif %}>Holt linear trend</option>
     </select>
 
-    <label style="font-size:0.75rem; color:var(--text-muted);">Horizon:
-      <input type="number" name="horizon" value="{{ vm.fc_params.horizon }}" min="7" max="90" style="width:4rem;" class="filter-input"> days
+    <label>Horizon
+      <input type="number" name="horizon" value="{{ vm.fc_params.horizon }}" min="7" max="90" class="filter-input number-input"> days
     </label>
 
-    <select name="freq" class="filter-input">
-      <option value="daily" {% if vm.fc_params.freq == 'daily' %}selected{% endif %}>Daily Cadence</option>
-      <option value="weekly" {% if vm.fc_params.freq == 'weekly' %}selected{% endif %}>Weekly Cadence</option>
-      <option value="monthly" {% if vm.fc_params.freq == 'monthly' %}selected{% endif %}>Monthly Cadence</option>
+    <select name="freq" aria-label="History interval" class="filter-input">
+      <option value="daily" {% if vm.fc_params.freq == 'daily' %}selected{% endif %}>Daily history</option>
+      <option value="weekly" {% if vm.fc_params.freq == 'weekly' %}selected{% endif %}>Weekly history</option>
+      <option value="monthly" {% if vm.fc_params.freq == 'monthly' %}selected{% endif %}>Monthly history</option>
     </select>
 
-    <button type="submit" class="btn btn-primary">Project</button>
+    <button type="submit" class="btn btn-primary">Run forecast</button>
   </form>
-</div>
+</section>
 
 <div class="kpi-strip">
   {% for kpi in vm.fc_kpis %}
     <div class="kpi-card">
-      <div class="lbl"><span>{{ kpi.icon }} {{ kpi.lbl }}</span></div>
+      <div class="lbl">{{ kpi.lbl }}</div>
       <div class="val">{{ kpi.val }}</div>
       <div class="sub">{{ kpi.sub }}</div>
     </div>
@@ -42,50 +42,50 @@
 </div>
 
 <div class="callout">
-  <b>Predictive Engine:</b> {{ vm.fc_assumptions }}. {{ vm.uncertainty_note }}
+  <b>Forecast assumptions.</b> {{ vm.fc_assumptions }}. {{ vm.uncertainty_note }}
 </div>
 
 <div class="bento-grid">
   <div class="bento-panel col-8">
-    <div class="panel-header"><div class="panel-title">Future Trajectory Projection (P10 - P50 - P90)</div></div>
+    <div class="panel-header"><h2>Observed and forecast usage</h2></div>
     <div class="chart-box-tall" data-chart="chart-forecast"></div>
     <script type="application/json" id="chart-forecast">{{ vm.charts.forecast_chart | tojson }}</script>
   </div>
 
   <div class="bento-panel col-4">
     <div class="panel-header">
-      <div class="panel-title">Cumulative Horizon Summary</div>
-      <a href="/api/export/forecast.csv" class="btn" style="font-size:0.7rem;">Download CSV</a>
+      <h2>Totals over the forecast period</h2>
+      <a href="/api/export/forecast.csv" class="btn">Download CSV</a>
     </div>
-    <div class="table-container" style="margin-bottom:1rem;">
+    <div class="table-container">
       <table class="data-table">
-        <thead><tr><th>Percentile</th><th>Volume</th></tr></thead>
+        <thead><tr><th>Percentile</th><th class="num">Volume</th></tr></thead>
         <tbody>
           {% for s in vm.fc_summary %}
-            <tr><td>{{ s.tier }}</td><td class="mono">{{ s.val }}</td></tr>
+            <tr><td>{{ s.tier }}</td><td class="num">{{ s.val }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% if vm.payback_pct %}
-      <div class="callout" style="font-size:0.72rem;">Median forecast is <b>{{ vm.payback_pct }}</b> of subscription spend.</div>
+      <div class="callout panel-section">Median forecast is <b>{{ vm.payback_pct }}</b> of subscription spend.</div>
     {% endif %}
   </div>
 
   <div class="bento-panel col-6">
-    <div class="panel-header"><div class="panel-title">Historical Aggregation Cadence</div></div>
+    <div class="panel-header"><h2>Usage history</h2></div>
     <div class="chart-box" data-chart="chart-cadence"></div>
     <script type="application/json" id="chart-cadence">{{ vm.charts.cadence_chart | tojson }}</script>
   </div>
 
   <div class="bento-panel col-6">
-    <div class="panel-header"><div class="panel-title">Daily Projected Schedule</div></div>
-    <div class="table-container" style="max-height:260px; overflow-y:auto;">
+    <div class="panel-header"><h2>Daily forecast</h2></div>
+    <div class="table-container scroll-rows">
       <table class="data-table">
-        <thead><tr><th>Date</th><th>P10 Floor</th><th>P50 Median</th><th>P90 Surge</th></tr></thead>
+        <thead><tr><th>Date</th><th class="num">Low (P10)</th><th class="num">Median (P50)</th><th class="num">High (P90)</th></tr></thead>
         <tbody>
           {% for r in vm.schedule_rows %}
-            <tr><td class="mono">{{ r.date }}</td><td class="mono">{{ r.low }}</td><td class="mono">{{ r.median }}</td><td class="mono">{{ r.high }}</td></tr>
+            <tr><td class="mono">{{ r.date }}</td><td class="num">{{ r.low }}</td><td class="num">{{ r.median }}</td><td class="num">{{ r.high }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

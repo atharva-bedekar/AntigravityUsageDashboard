@@ -30,8 +30,9 @@ def client(usage, rich_brain, monkeypatch, tmp_path):
 def test_index_renders_html_shell(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "ANTIGRAVITY" in res.text
-    assert "01 // COMMAND" in res.text
+    assert "Antigravity Usage Dashboard" in res.text
+    assert "<h1>Usage overview</h1>" in res.text
+    assert 'aria-label="Tokens and estimated cost by category"' in res.text
 
 
 def test_switch_workspace_views(client):
@@ -42,11 +43,11 @@ def test_switch_workspace_views(client):
     # Ensure duplicate view query parameter from hx-include honors the explicit tab target
     res_sessions = client.get("/?view=sessions&view=command")
     assert res_sessions.status_code == 200
-    assert "Session Workload Leaderboard" in res_sessions.text
+    assert "Sessions by token usage" in res_sessions.text
 
     res_econ = client.get("/?view=economics&view=command")
     assert res_econ.status_code == 200
-    assert "STAGE 1 // FORECAST CONTROLS" in res_econ.text
+    assert 'id="forecast-heading">Forecast' in res_econ.text
 
 
 def test_session_detail_endpoint(client, usage):
@@ -76,11 +77,11 @@ def test_theme_cookie_sets_data_theme(client):
 def test_forecast_and_lab_partials(client):
     res_fc = client.get("/partials/forecast-stage?target=Total+tokens&method=Bootstrap+resampling")
     assert res_fc.status_code == 200
-    assert "STAGE 1 // FORECAST CONTROLS" in res_fc.text
+    assert 'id="forecast-heading">Forecast' in res_fc.text
 
     res_lab = client.get("/partials/lab-stage?prompt_mult=1.5")
     assert res_lab.status_code == 200
-    assert "STAGE 2 // WHAT-IF SIMULATOR CONTROLS" in res_lab.text
+    assert 'id="simulator-heading">Cost simulator' in res_lab.text
 
 
 def test_refresh_endpoint_clears_cache(client):
@@ -135,11 +136,11 @@ def test_source_error_handling(client, monkeypatch):
     res = client.get("/")
     assert res.status_code == 500
     assert "Brain root does not exist" in res.text
-    assert "Telemetry Fault Encountered" in res.text
+    assert "Couldn’t load the dashboard" in res.text
 
 
 def test_pricing_error_handling(client, monkeypatch):
     monkeypatch.setattr(state, "load_catalog", lambda: [])
     res = client.get("/")
     assert res.status_code == 400
-    assert "Telemetry Fault Encountered" in res.text
+    assert "Couldn’t load the dashboard" in res.text

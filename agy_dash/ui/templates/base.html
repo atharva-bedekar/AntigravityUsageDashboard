@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Antigravity // Mission Telemetry</title>
+  <title>Antigravity Usage Dashboard</title>
   <link rel="stylesheet" href="/static/css/telemetry.css">
   <script src="/static/vendor/htmx.min.js"></script>
   <script src="/static/vendor/echarts.min.js"></script>
@@ -12,7 +12,16 @@
 <body>
   {% include "partials/command_bar.html" %}
 
-  <main id="workspace-canvas" class="workspace">
+  <main id="workspace-canvas" class="workspace" data-view="{{ filters.view }}">
+    <div class="workspace-heading">
+      <h1>{{ {'command': 'Usage overview', 'sessions': 'Sessions', 'economics': 'Costs and forecasts'}[filters.view] }}</h1>
+      {% if filters.view != 'command' %}
+        <div class="workspace-summary">
+          <span>Tokens <strong>{{ ctx.overview.totals.total | fmt_tokens }}</strong></span>
+          <span>Estimated API cost <strong>{{ ctx.money(ctx.overview.api_cost_usd) }}</strong></span>
+        </div>
+      {% endif %}
+    </div>
     {% if filters.view == 'command' %}
       {% include "partials/view_command.html" %}
     {% elif filters.view == 'sessions' %}
@@ -22,7 +31,6 @@
     {% endif %}
   </main>
 
-  <div id="drawer-backdrop" class="drawer-backdrop" onclick="closeDrawers()"></div>
   {% include "partials/sync_drawer.html" %}
   {% include "partials/session_drawer.html" %}
   {% include "partials/catalog_drawer.html" %}

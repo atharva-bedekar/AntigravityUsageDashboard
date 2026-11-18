@@ -13,12 +13,14 @@ from . import common
 def _base_chart(c: dict[str, str], title: str | None = None) -> dict[str, Any]:
     opt: dict[str, Any] = {
         "backgroundColor": "transparent",
-        "textStyle": {"fontFamily": "Plus Jakarta Sans, sans-serif", "color": c["text"]},
+        "animation": False,
+        "aria": {"enabled": True},
+        "textStyle": {"fontFamily": "Segoe UI Variable Text, Segoe UI, sans-serif", "color": c["text"]},
         "tooltip": {
             "trigger": "axis",
             "backgroundColor": c["panel_solid"],
             "borderColor": c["border"],
-            "textStyle": {"color": c["text"], "fontFamily": "JetBrains Mono, monospace", "fontSize": 12},
+            "textStyle": {"color": c["text"], "fontFamily": "Cascadia Mono, Consolas, monospace", "fontSize": 12},
             "axisPointer": {"lineStyle": {"color": c["border"], "type": "dashed"}},
         },
         "grid": {"top": 35, "right": 25, "bottom": 30, "left": 20, "containLabel": True},
@@ -44,79 +46,43 @@ def daily_burn(ctx: common.Ctx) -> dict[str, Any]:
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in daily["date"]]
     costs = [round(ctx.to_currency(v), 2) for v in attached["cost_usd"]]
 
+    opt["grid"] = {"top": 64, "right": 16, "bottom": 44, "left": 8, "containLabel": True}
     opt["legend"] = {
-        "data": ["Fresh Input", "Cached Input", "Output & Reasoning", f"API Cost ({ctx.currency})"],
-        "textStyle": {"color": c["muted"], "fontSize": 11, "fontFamily": "Plus Jakarta Sans, sans-serif"},
-        "top": 0, "right": 10,
+        "data": ["Fresh input", "Cached input", "Output", f"Estimated cost ({ctx.currency})"],
+        "textStyle": {"color": c["muted"], "fontSize": 11, "fontFamily": "Segoe UI Variable Text, Segoe UI, sans-serif"},
+        "top": 0, "left": 0, "right": 0, "itemWidth": 12, "itemHeight": 8,
+        "pageTextStyle": {"color": c["text"]}, "pageIconColor": c["accent"], "pageIconInactiveColor": c["muted"],
         "type": "scroll",
     }
     opt["xAxis"] = {
         "type": "category", "data": dates,
         "axisLine": {"lineStyle": {"color": c["border"]}},
-        "axisLabel": {"color": c["muted"], "fontFamily": "JetBrains Mono", "fontSize": 10},
+        "axisLabel": {"color": c["muted"], "fontFamily": "Cascadia Mono, Consolas, monospace", "fontSize": 11},
     }
     opt["yAxis"] = [
         {
             "type": "value", "name": "Tokens",
             "splitLine": {"lineStyle": {"color": c["grid"]}},
-            "axisLabel": {"color": c["muted"], "fontFamily": "JetBrains Mono", "formatter": "{value}"},
+            "axisLabel": {"color": c["muted"], "fontFamily": "Cascadia Mono, Consolas, monospace"},
         },
         {
             "type": "value", "name": ctx.currency, "position": "right",
             "splitLine": {"show": False},
-            "axisLabel": {"color": c["cost"], "fontFamily": "JetBrains Mono"},
+            "axisLabel": {"color": c["cost"], "fontFamily": "Cascadia Mono, Consolas, monospace"},
         },
     ]
     opt["series"] = [
-        {"name": "Fresh Input", "type": "bar", "stack": "tokens", "color": c["fresh"], "data": daily["fresh_in"].tolist()},
-        {"name": "Cached Input", "type": "bar", "stack": "tokens", "color": c["cached"], "data": daily["cached"].tolist()},
-        {"name": "Output & Reasoning", "type": "bar", "stack": "tokens", "color": c["output"], "data": daily["output"].tolist()},
-        {"name": f"API Cost ({ctx.currency})", "type": "line", "yAxisIndex": 1, "color": c["cost"],
-         "smooth": True, "showSymbol": True, "symbolSize": 6, "data": costs},
+        {"name": "Fresh input", "type": "bar", "stack": "tokens", "color": c["fresh"], "data": daily["fresh_in"].tolist()},
+        {"name": "Cached input", "type": "bar", "stack": "tokens", "color": c["cached"], "data": daily["cached"].tolist()},
+        {"name": "Output", "type": "bar", "stack": "tokens", "color": c["output"], "data": daily["output"].tolist()},
+        {"name": f"Estimated cost ({ctx.currency})", "type": "line", "yAxisIndex": 1, "color": c["cost"],
+         "showSymbol": True, "symbolSize": 5, "lineStyle": {"width": 2}, "data": costs},
     ]
-    opt["dataZoom"] = [{"type": "slider", "bottom": 0, "height": 18, "textStyle": {"color": c["muted"]}}]
-    return opt
-
-
-def token_mix(ctx: common.Ctx) -> dict[str, Any]:
-    c = common.colors(ctx.theme)
-    t = ctx.overview.totals if ctx.overview else None
-    opt = _base_chart(c, "Token Distribution")
-    opt["tooltip"] = {
-        "trigger": "item", "backgroundColor": c["panel_solid"], "borderColor": c["border"],
-        "textStyle": {"fontFamily": "JetBrains Mono", "color": c["text"]},
-        "formatter": "{b}: <b>{c}</b> ({d}%)",
-    }
-    opt["series"] = [{
-        "type": "pie", "radius": ["55%", "78%"], "avoidLabelOverlap": True,
-        "itemStyle": {"borderRadius": 4, "borderColor": c["bg"], "borderWidth": 2},
-        "label": {"show": False},
-        "data": [
-            {"value": t.fresh_in if t else 0, "name": "Fresh Input", "itemStyle": {"color": c["fresh"]}},
-            {"value": t.cached if t else 0, "name": "Cached Input", "itemStyle": {"color": c["cached"]}},
-            {"value": t.output if t else 0, "name": "Output & Reasoning", "itemStyle": {"color": c["output"]}},
-        ],
-    }]
-    return opt
-
-
-def cost_burden(ctx: common.Ctx) -> dict[str, Any]:
-    c = common.colors(ctx.theme)
-    b = ctx.overview.breakdown_usd if ctx.overview else {}
-    opt = _base_chart(c, f"Cost Burden by Category ({ctx.currency})")
-    opt["tooltip"] = {
-        "trigger": "item", "backgroundColor": c["panel_solid"], "borderColor": c["border"],
-        "textStyle": {"fontFamily": "JetBrains Mono", "color": c["text"]},
-    }
-    opt["series"] = [{
-        "type": "pie", "radius": ["55%", "78%"], "avoidLabelOverlap": True,
-        "itemStyle": {"borderRadius": 4, "borderColor": c["bg"], "borderWidth": 2},
-        "label": {"show": False},
-        "data": [
-            {"value": round(ctx.to_currency(b.get("fresh_usd", b.get("fresh_in", 0.0))), 2), "name": "Fresh Input", "itemStyle": {"color": c["fresh"]}},
-            {"value": round(ctx.to_currency(b.get("cached_usd", b.get("cached", 0.0))), 2), "name": "Cached Input", "itemStyle": {"color": c["cached"]}},
-            {"value": round(ctx.to_currency(b.get("output_usd", b.get("output", 0.0))), 2), "name": "Output", "itemStyle": {"color": c["output"]}},
-        ],
+    opt["dataZoom"] = [{
+        "type": "slider", "bottom": 4, "height": 16, "textStyle": {"color": c["muted"]},
+        "borderColor": c["border"], "backgroundColor": c["panel_alt"], "fillerColor": "transparent",
+        "handleStyle": {"color": c["muted"], "borderColor": c["muted"]},
+        "selectedDataBackground": {"lineStyle": {"color": c["accent"]}, "areaStyle": {"color": c["cached"]}},
     }]
     return opt
 
@@ -132,7 +98,7 @@ def workspace_attribution(ws_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any
     df = ws_df.nlargest(8, col).iloc[::-1]
     opt["grid"] = {"top": 15, "right": 25, "bottom": 20, "left": 10, "containLabel": True}
     opt["xAxis"] = {"type": "value", "splitLine": {"lineStyle": {"color": c["grid"]}}}
-    opt["yAxis"] = {"type": "category", "data": [str(p)[:22] for p in df["project"].fillna("(unknown)")], "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["yAxis"] = {"type": "category", "data": [str(p)[:22] for p in df["project"].fillna("(unknown)")], "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["series"] = [{"name": "Tokens", "type": "bar", "color": c["accent"], "data": df[col].tolist()}]
     return opt
 
@@ -143,14 +109,14 @@ def cache_thrash(step_days_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any]:
     if step_days_df is None or step_days_df.empty:
         return _empty_cartesian(opt)
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in step_days_df["date"]]
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["yAxis"] = [
         {"type": "value", "name": "Misses", "splitLine": {"lineStyle": {"color": c["grid"]}}},
         {"type": "value", "name": "Calls", "position": "right", "splitLine": {"show": False}},
     ]
     opt["series"] = [
-        {"name": "Zero-Cache Miss Calls", "type": "bar", "color": c["bad"], "data": step_days_df["cache_miss_calls"].tolist()},
-        {"name": "Total Model Calls", "type": "line", "yAxisIndex": 1, "color": c["accent"], "data": step_days_df["model_calls"].tolist()},
+        {"name": "Cache misses", "type": "bar", "color": c["bad"], "data": step_days_df["cache_miss_calls"].fillna(0).tolist()},
+        {"name": "Model calls", "type": "line", "yAxisIndex": 1, "color": c["accent"], "data": step_days_df["model_calls"].fillna(0).tolist()},
     ]
     return opt
 
@@ -174,7 +140,7 @@ def top_sessions(sessions_df: pd.DataFrame, top_n: int, ctx: common.Ctx) -> dict
         })
     opt["grid"] = {"top": 15, "right": 30, "bottom": 20, "left": 10, "containLabel": True}
     opt["xAxis"] = {"type": "value", "splitLine": {"lineStyle": {"color": c["grid"]}}}
-    opt["yAxis"] = {"type": "category", "data": labels, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["yAxis"] = {"type": "category", "data": labels, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["series"] = [{"type": "bar", "data": data}]
     return opt
 
@@ -207,7 +173,7 @@ def calls_vs_sessions(daily_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any]
     if daily_df is None or daily_df.empty:
         return _empty_cartesian(opt)
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in daily_df["date"]]
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["yAxis"] = [
         {"type": "value", "name": "Calls", "splitLine": {"lineStyle": {"color": c["grid"]}}},
         {"type": "value", "name": "Sessions", "position": "right", "splitLine": {"show": False}},
@@ -225,7 +191,7 @@ def time_budget(gaps_daily_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any]:
     if gaps_daily_df is None or gaps_daily_df.empty:
         return _empty_cartesian(opt)
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in gaps_daily_df["date"]]
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["yAxis"] = {"type": "value", "name": "Hours", "splitLine": {"lineStyle": {"color": c["grid"]}}}
     opt["series"] = [
         {"name": "Agent Active (Busy)", "type": "bar", "stack": "hours", "color": c["accent"],
@@ -243,7 +209,7 @@ def thinking_ratio(step_days_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any
         return _empty_cartesian(opt)
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in step_days_df["date"]]
     ratio = (step_days_df["thinking_steps"] / step_days_df["steps"].replace(0, pd.NA)).fillna(0) * 100
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["yAxis"] = {"type": "value", "name": "%", "max": 100, "splitLine": {"lineStyle": {"color": c["grid"]}}}
     opt["series"] = [{
         "name": "Thinking Ratio", "type": "line", "smooth": True, "color": c["cost"],
@@ -261,7 +227,7 @@ def tool_mix(counters: dict, ctx: common.Ctx) -> dict[str, Any]:
     s = pd.Series(tools).sort_values().tail(12)
     opt["grid"] = {"top": 15, "right": 25, "bottom": 20, "left": 10, "containLabel": True}
     opt["xAxis"] = {"type": "value", "splitLine": {"lineStyle": {"color": c["grid"]}}}
-    opt["yAxis"] = {"type": "category", "data": s.index.tolist(), "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["yAxis"] = {"type": "category", "data": s.index.tolist(), "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["series"] = [{"type": "bar", "data": s.values.tolist(), "itemStyle": {"color": c["accent"]}}]
     return opt
 
@@ -273,7 +239,7 @@ def failure_daily(failures_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any]:
         return _empty_cartesian(opt)
     by_day = failures_df.groupby("date").size()
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in by_day.index]
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["yAxis"] = {"type": "value", "name": "Errors", "splitLine": {"lineStyle": {"color": c["grid"]}}}
     opt["series"] = [{"name": "Failures", "type": "bar", "color": c["bad"], "data": by_day.values.tolist()}]
     return opt
@@ -303,7 +269,7 @@ def mcp_invocations(counters: dict, ctx: common.Ctx) -> dict[str, Any]:
     s = pd.Series(servers).sort_values().tail(8)
     opt["grid"] = {"top": 15, "right": 25, "bottom": 20, "left": 10, "containLabel": True}
     opt["xAxis"] = {"type": "value", "splitLine": {"lineStyle": {"color": c["grid"]}}}
-    opt["yAxis"] = {"type": "category", "data": s.index.tolist(), "axisLabel": {"color": c["muted"], "fontSize": 10}}
+    opt["yAxis"] = {"type": "category", "data": s.index.tolist(), "axisLabel": {"color": c["muted"], "fontSize": 11}}
     opt["series"] = [{"type": "bar", "data": s.values.tolist(), "itemStyle": {"color": c["cached"]}}]
     return opt
 
@@ -321,8 +287,8 @@ def forecast_fan(observed: pd.DataFrame, fc: stats.Forecast, column: str, unit: 
         fc_dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in fc.dates]
         all_dates.extend(fc_dates)
 
-    opt["xAxis"] = {"type": "category", "data": all_dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
-    opt["yAxis"] = [{"type": "value", "name": ctx.currency if unit is None else "Tokens",
+    opt["xAxis"] = {"type": "category", "data": all_dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
+    opt["yAxis"] = [{"type": "value", "name": ctx.currency if unit is None else unit.capitalize(),
                      "splitLine": {"lineStyle": {"color": c["grid"]}}}]
 
     series = [
@@ -338,13 +304,20 @@ def forecast_fan(observed: pd.DataFrame, fc: stats.Forecast, column: str, unit: 
         series.extend([
             {"name": "P10 Floor", "type": "line", "stack": "confidence_band",
              "lineStyle": {"opacity": 0}, "showSymbol": False, "data": p10},
-            {"name": "P10-P90 Uncertainty Band", "type": "line", "stack": "confidence_band",
-             "lineStyle": {"opacity": 0}, "areaStyle": {"color": "rgba(56,189,248,0.18)"},
+            {"name": "P10–P90 range", "type": "line", "stack": "confidence_band",
+             "color": c["cached"], "lineStyle": {"opacity": 0}, "areaStyle": {"color": c["cached"], "opacity": 0.24},
              "showSymbol": False, "data": delta},
-            {"name": "P50 Median", "type": "line",
-             "lineStyle": {"color": c["output"], "type": "dashed", "width": 2},
-             "data": p50},
+            {"name": "P50 Median", "type": "line", "color": c["text"],
+             "lineStyle": {"type": "dashed", "width": 2}, "showSymbol": False, "data": p50},
         ])
+    opt["grid"] = {"top": 64, "right": 16, "bottom": 24, "left": 8, "containLabel": True}
+    opt["legend"] = {
+        "data": [name for name in ("Measured", "P50 Median", "P10–P90 range")
+                 if any(item["name"] == name for item in series)],
+        "textStyle": {"color": c["muted"]}, "top": 0, "left": 0, "right": 0,
+        "itemWidth": 12, "itemHeight": 8,
+        "selectedMode": False,
+    }
     opt["series"] = series
     return opt
 
@@ -355,8 +328,8 @@ def historical_cadence(agg_df: pd.DataFrame, column: str, freq: str, unit: str |
     if agg_df is None or agg_df.empty:
         return _empty_cartesian(opt)
     dates = [pd.Timestamp(d).strftime("%Y-%m-%d") for d in agg_df["date"]]
-    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 10}}
-    opt["yAxis"] = [{"type": "value", "name": ctx.currency if unit is None else "Tokens",
+    opt["xAxis"] = {"type": "category", "data": dates, "axisLabel": {"color": c["muted"], "fontSize": 11}}
+    opt["yAxis"] = [{"type": "value", "name": ctx.currency if unit is None else unit.capitalize(),
                      "splitLine": {"lineStyle": {"color": c["grid"]}}}]
     opt["series"] = [{"name": column, "type": "bar", "color": c["accent"], "data": agg_df[column].round(2).tolist()}]
     return opt
@@ -377,8 +350,8 @@ def model_benchmark(cmp_df: pd.DataFrame, ctx: common.Ctx) -> dict[str, Any]:
         })
     opt["grid"] = {"top": 15, "right": 70, "bottom": 20, "left": 10, "containLabel": True}
     opt["xAxis"] = {"type": "value", "splitLine": {"lineStyle": {"color": c["grid"]}}}
-    opt["yAxis"] = {"type": "category", "data": cmp_df["model"].tolist(), "axisLabel": {"color": c["muted"], "fontSize": 10}}
-    opt["series"] = [{"type": "bar", "data": data, "label": {"show": True, "position": "right", "color": c["text"], "fontFamily": "JetBrains Mono", "fontSize": 10}}]
+    opt["yAxis"] = {"type": "category", "data": cmp_df["model"].tolist(), "axisLabel": {"color": c["muted"], "fontSize": 11}}
+    opt["series"] = [{"type": "bar", "data": data, "label": {"show": True, "position": "right", "color": c["text"], "fontFamily": "Cascadia Mono, Consolas, monospace", "fontSize": 11}}]
     return opt
 
 
@@ -400,6 +373,6 @@ def subscription_comparison(ctx: common.Ctx) -> dict[str, Any]:
             {"value": round(sub_spend, 2), "itemStyle": {"color": c["cached"], "borderRadius": [0, 4, 4, 0]}},
             {"value": round(api_val, 2), "itemStyle": {"color": c["accent"], "borderRadius": [0, 4, 4, 0]}},
         ],
-        "label": {"show": True, "position": "right", "color": c["text"], "fontFamily": "JetBrains Mono"},
+        "label": {"show": True, "position": "right", "color": c["text"], "fontFamily": "Cascadia Mono, Consolas, monospace"},
     }]
     return opt

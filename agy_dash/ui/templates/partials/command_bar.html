@@ -1,102 +1,81 @@
 <header class="command-bar">
   <div class="command-bar-primary">
-    <div class="brand">
-      <div class="brand-title">
-        <span class="brand-radar-pulse"></span>
-        ANTIGRAVITY <span class="brand-accent-slash">//</span> TELEMETRY
-      </div>
-      <div class="badge-pill mono" title="Total Tokens Scanned">
-        <span class="pill-dot emerald"></span>
-        <span class="pill-label">TOKENS</span>
-        <span class="pill-val">{{ ctx.overview.totals.total | fmt_tokens if ctx else '0' }}</span>
-      </div>
-      <div class="badge-pill mono" title="Modeled API Cost">
-        <span class="pill-label">METERED</span>
-        <span class="pill-val">{{ ctx.money(ctx.overview.api_cost_usd) if ctx else '₹0' }}</span>
-      </div>
-    </div>
+    <span class="brand-title">Antigravity Usage Dashboard</span>
 
-    <nav class="view-nav" aria-label="Mission Views">
-      <a href="?view=command" class="nav-tab {% if filters.view == 'command' %}active{% endif %}" data-view="command"
-         hx-get="/?view=command" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-include="#global-filter-form" hx-push-url="true"
-         onclick="const v=document.getElementById('global-view-input'); if(v) v.value='command';">
-        01 // COMMAND
-      </a>
-      <a href="?view=sessions" class="nav-tab {% if filters.view == 'sessions' %}active{% endif %}" data-view="sessions"
-         hx-get="/?view=sessions" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-include="#global-filter-form" hx-push-url="true"
-         onclick="const v=document.getElementById('global-view-input'); if(v) v.value='sessions';">
-        02 // SESSIONS
-      </a>
-      <a href="?view=economics" class="nav-tab {% if filters.view == 'economics' %}active{% endif %}" data-view="economics"
-         hx-get="/?view=economics" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-include="#global-filter-form" hx-push-url="true"
-         onclick="const v=document.getElementById('global-view-input'); if(v) v.value='economics';">
-        03 // ECONOMICS
-      </a>
+    <nav class="view-nav" aria-label="Dashboard views">
+      {% for view, label in [('command', 'Overview'), ('sessions', 'Sessions'), ('economics', 'Costs')] %}
+        <a href="?view={{ view }}" class="nav-tab{% if filters.view == view %} active{% endif %}" data-view="{{ view }}"
+           {% if filters.view == view %}aria-current="page"{% endif %}
+           hx-get="/?view={{ view }}" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML"
+           hx-include="#global-filter-form" hx-params="not view" hx-push-url="true">{{ label }}</a>
+      {% endfor %}
     </nav>
 
     <div class="deck-actions">
-      <button type="button" class="btn btn-action" onclick="toggleTheme()" title="Toggle Theme (Dark / Light)">
-        <span class="action-icon">🌓</span>
-        <span class="action-text">Theme</span>
-      </button>
-      <button type="button" class="btn btn-action" title="Refresh local scans"
-              hx-post="/api/refresh" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-include="#global-filter-form" hx-headers='{"HX-Request":"true"}'>
-        <span class="action-icon">🔄</span>
-        <span class="action-text">Rescan</span>
-      </button>
-      <button type="button" class="btn btn-action btn-sync" onclick="openDrawer('sync-drawer')" title="Operations & Snapshots">
-        <span class="status-dot {% if runner_state and runner_state.running %}running pulse{% else %}idle{% endif %}"></span>
-        <span class="action-text">Sync & DB</span>
+      <button type="button" class="btn btn-quiet" onclick="toggleTheme()" title="Switch between light and dark themes">Theme</button>
+      <button type="button" class="btn btn-quiet" title="Refresh local scans"
+              hx-post="/api/refresh" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML"
+              hx-include="#global-filter-form" hx-on::config-request="event.detail.useUrlParams = true">Rescan</button>
+      <button type="button" class="btn" onclick="openDrawer('sync-drawer')" aria-haspopup="dialog">
+        <span class="status-dot{% if runner_state and runner_state.running %} running{% endif %}"
+              role="img" aria-label="{{ 'Extractor running' if runner_state and runner_state.running else 'Extractor idle' }}"></span>
+        Data sync
       </button>
     </div>
   </div>
 
-  <form id="global-filter-form" class="filter-strip" method="get" action="/"
-        hx-get="/" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-push-url="true">
-    <input type="hidden" id="global-view-input" name="view" value="{{ filters.view }}">
-    <input type="hidden" id="global-theme-input" name="theme" value="{{ filters.theme }}">
+  <div class="filter-bar">
+    <form id="global-filter-form" class="filter-strip" method="get" action="/"
+          hx-get="/" hx-select="#workspace-canvas" hx-target="#workspace-canvas" hx-swap="outerHTML" hx-push-url="true"
+          hx-on::after-request="if (event.detail.successful) this.querySelector('details').open = false">
+      <input type="hidden" id="global-view-input" name="view" value="{{ filters.view }}">
+      <input type="hidden" id="global-theme-input" name="theme" value="{{ filters.theme }}">
 
-    <div class="filter-group">
-      <span class="filter-group-label">RANGE</span>
-      <div class="filter-date-pair">
-        <input type="date" name="start" value="{{ filters.start }}" class="filter-input date-input" title="Start Date">
-        <span class="date-sep">→</span>
-        <input type="date" name="end" value="{{ filters.end }}" class="filter-input date-input" title="End Date">
+      <div class="filter-group filter-range">
+        <span class="filter-group-label">Date range</span>
+        <div class="filter-date-pair">
+          <input type="date" name="start" value="{{ filters.start or '' }}" class="filter-input date-input" aria-label="Start date">
+          <span class="panel-meta" aria-hidden="true">to</span>
+          <input type="date" name="end" value="{{ filters.end or '' }}" class="filter-input date-input" aria-label="End date">
+        </div>
       </div>
-    </div>
 
-    <div class="filter-group">
-      <span class="filter-group-label">MODEL</span>
-      <select name="model" class="filter-input model-select" onchange="this.form.requestSubmit()" title="Catalog Model">
-        {% for m in model_ids %}
-          <option value="{{ m }}" {% if m == filters.model_id %}selected{% endif %}>{{ m }}</option>
-        {% endfor %}
-      </select>
-    </div>
+      <label class="filter-group filter-model">
+        <span class="filter-group-label">Model</span>
+        <select name="model" aria-label="Model" class="filter-input model-select" onchange="this.form.requestSubmit()">
+          {% for m in model_ids %}
+            <option value="{{ m }}" {% if m == filters.model_id %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </label>
 
-    <div class="filter-group">
-      <span class="filter-group-label">CURRENCY</span>
-      <select name="currency" class="filter-input currency-select" onchange="this.form.requestSubmit()" title="Reporting Currency">
-        <option value="INR" {% if ctx.currency == 'INR' %}selected{% endif %}>INR (₹)</option>
-        <option value="USD" {% if ctx.currency == 'USD' %}selected{% endif %}>USD ($)</option>
-        <option value="EUR" {% if ctx.currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
-        <option value="GBP" {% if ctx.currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
-      </select>
-    </div>
+      <label class="filter-group">
+        <span class="filter-group-label">Currency</span>
+        <select name="currency" aria-label="Currency" class="filter-input" onchange="this.form.requestSubmit()">
+          <option value="INR" {% if ctx.currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+          <option value="USD" {% if ctx.currency == 'USD' %}selected{% endif %}>USD ($)</option>
+          <option value="EUR" {% if ctx.currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+          <option value="GBP" {% if ctx.currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+        </select>
+      </label>
 
-    <div class="filter-group">
-      <span class="filter-group-label">FX</span>
-      <input type="number" step="0.1" name="fx" value="{{ filters.fx }}" placeholder="FX" title="USD exchange rate" class="filter-input fx-input">
-    </div>
-
-    <div class="filter-group">
-      <span class="filter-group-label">SUB</span>
-      <input type="number" step="100" name="sub" value="{{ filters.sub }}" placeholder="Sub" title="Subscription Spend" class="filter-input sub-input">
-    </div>
-
-    <div class="filter-buttons">
-      <button type="submit" class="btn btn-filter">Filter</button>
-      <a href="/?view={{ filters.view }}" class="btn btn-reset">Reset</a>
-    </div>
-  </form>
+      <div class="filter-buttons">
+        <details class="pricing-options">
+          <summary>Pricing inputs</summary>
+          <div class="pricing-fields">
+            <label class="filter-group">
+              <span class="filter-group-label">USD exchange rate</span>
+              <input type="number" step="0.1" name="fx" value="{{ filters.fx }}" class="filter-input">
+            </label>
+            <label class="filter-group">
+              <span class="filter-group-label">Subscription spend</span>
+              <input type="number" step="100" name="sub" value="{{ filters.sub }}" class="filter-input">
+            </label>
+          </div>
+        </details>
+        <a href="/?view={{ filters.view }}" class="btn btn-quiet">Reset</a>
+        <button type="submit" class="btn btn-primary">Apply filters</button>
+      </div>
+    </form>
+  </div>
 </header>
