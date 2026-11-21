@@ -78,6 +78,13 @@ a:focus-visible {
   height: 100vh;
   width: 100vw;
   background: var(--bg-canvas);
+  border: 1px solid var(--border-panel);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.app-shell.is-maximized {
+  border: none;
 }
 
 /* Top Menu Bar (36px) */
@@ -87,11 +94,12 @@ a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px 0 14px;
+  padding: 0 6px 0 14px;
   background: var(--bg-canvas);
   font-size: 13px;
   position: relative;
   z-index: 40;
+  user-select: none;
 }
 
 .menu-bar-left {
@@ -112,6 +120,7 @@ a:focus-visible {
 
 .menu-item-wrap {
   position: relative;
+  -webkit-app-region: no-drag;
 }
 
 .menu-trigger {

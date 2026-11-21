@@ -351,18 +351,24 @@ function renderApp(): void {
 
   root.innerHTML = `
     <div class="app-shell">
-      <header class="menu-bar">
-        <div class="menu-bar-left">
-          <span class="menu-app-title">${appLogoSvg(15)}<span>Antigravity Usage</span></span>
+      <header class="menu-bar" data-tauri-drag-region>
+        <div class="menu-bar-left" data-tauri-drag-region>
+          <span class="menu-app-title" data-tauri-drag-region>${appLogoSvg(15)}<span>Antigravity Usage</span></span>
           ${renderMenuButton("usage", "Usage")}
           ${renderMenuButton("view", "View")}
           ${renderMenuButton("window", "Window")}
           ${renderMenuButton("help", "Help")}
         </div>
         <div class="window-controls">
-          <button type="button" class="win-btn" id="win-min" title="Minimize">—</button>
-          <button type="button" class="win-btn" id="win-max" title="Maximize">□</button>
-          <button type="button" class="win-btn win-btn-close" id="win-close" title="Close">✕</button>
+          <button type="button" class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="win-btn" id="win-max" title="Maximize" aria-label="Maximize">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <button type="button" class="win-btn win-btn-close" id="win-close" title="Close" aria-label="Close">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </header>
 
@@ -938,15 +944,44 @@ function updateScrollFab(): void {
 }
 
 function attachShellListeners(): void {
-  // Window controls
+  // Window controls & seamless drag region
+  const syncMaxIcon = async () => {
+    try {
+      const win = getCurrentWindow();
+      const maxed = await win.isMaximized();
+      const btn = document.getElementById("win-max");
+      const shell = document.querySelector<HTMLElement>(".app-shell");
+      if (shell) shell.classList.toggle("is-maximized", maxed);
+      if (btn) {
+        btn.title = maxed ? "Restore" : "Maximize";
+        btn.setAttribute("aria-label", maxed ? "Restore" : "Maximize");
+        btn.innerHTML = maxed
+          ? `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M3 3V1.8c0-.4.3-.8.8-.8h4.4c.4 0 .8.4.8.8v4.4c0 .5-.4.8-.8.8H7" stroke="currentColor" stroke-width="1.15"/><rect x="1" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.15"/></svg>`
+          : `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>`;
+      }
+    } catch {}
+  };
+  void syncMaxIcon();
+
   document.getElementById("win-min")?.addEventListener("click", () => {
     try { void getCurrentWindow().minimize(); } catch {}
   });
-  document.getElementById("win-max")?.addEventListener("click", () => {
-    try { void getCurrentWindow().toggleMaximize(); } catch {}
+  document.getElementById("win-max")?.addEventListener("click", async () => {
+    try {
+      await getCurrentWindow().toggleMaximize();
+      await syncMaxIcon();
+    } catch {}
   });
   document.getElementById("win-close")?.addEventListener("click", () => {
     try { void getCurrentWindow().close(); } catch {}
+  });
+  document.querySelector(".menu-bar")?.addEventListener("dblclick", async (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button, .menu-dropdown")) return;
+    try {
+      await getCurrentWindow().toggleMaximize();
+      await syncMaxIcon();
+    } catch {}
   });
 
   // Top menu triggers
