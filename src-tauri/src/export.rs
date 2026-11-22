@@ -51,10 +51,7 @@ pub fn generate_plain_english_summary(payload: &DashboardPayload) -> String {
     let cost_str = format_currency(payload.cost.total_currency, &payload.cost.currency);
 
     format!(
-        "From {first} to {last} you used {total_tok} tokens ({fresh_tok} new input, {cached_tok} cached input, {output_tok} output) in {} sessions ({} CLI, {} App). {cache_pct}% were cached re-reads. At {} prices that's about ≈ {cost_str}.",
-        payload.totals.sessions,
-        payload.cli_totals.sessions,
-        payload.app_totals.sessions,
+        "From {first} to {last} you used {total_tok} tokens ({fresh_tok} new input, {cached_tok} cached input, {output_tok} output). {cache_pct}% were cached re-reads. At {} prices that's about ≈ {cost_str}.",
         payload.active_model.name,
     )
 }
@@ -151,4 +148,140 @@ pub fn export_diagnostics_json(
         path: path.to_string_lossy().into_owned(),
         row_count: diagnostics.sources.len(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::default_config;
+    use crate::metrics::build_dashboard;
+    use crate::models::{
+        ConsistencyReport, FilterState, ScanResult, SessionKind, SessionRecord, SourceKind,
+        StepRecord,
+    };
+    use crate::pricing::{default_catalog, Catalog};
+
+    fn make_session(
+        session_id: &str,
+        source: SourceKind,
+        date: &str,
+        fresh_in: u64,
+        cached: u64,
+        output: u64,
+    ) -> SessionRecord {
+        let total = fresh_in + cached + output;
+        let source_str = source.key();
+        SessionRecord {
+            session_id: session_id.to_string(),
+            short_id: session_id.chars().take(8).collect(),
+            source,
+            kind: SessionKind::Main,
+            title: "Test Session".to_string(),
+            is_untitled: false,
+            label_source: "title".to_string(),
+            project: "test-proj".to_string(),
+            workspace: "/tmp/test-proj".to_string(),
+            parent_id: None,
+            agent_type: None,
+            role: None,
+            first_utc: Some(format!("{date}T10:00:00Z")),
+            last_utc: Some(format!("{date}T10:05:00Z")),
+            first_local_date: Some(date.to_string()),
+            last_local_date: Some(date.to_string()),
+            duration_secs: 300,
+            calls: 1,
+            step_count: 1,
+            fresh_in,
+            cached,
+            output,
+            total,
+            thinking_steps: 0,
+            error_steps: 0,
+            tool_call_count: 0,
+            tool_names: Vec::new(),
+            transcript_path: String::new(),
+            metadata_source: "transcript".to_string(),
+            steps: vec![StepRecord {
+                step_index: 0,
+                created_at: Some(format!("{date}T10:00:00Z")),
+                local_date: Some(date.to_string()),
+                local_time: Some("10:00".to_string()),
+                step_type: "plannerResponse".to_string(),
+                source: source_str,
+                status: "done".to_string(),
+                fresh_in,
+                cached,
+                output,
+                total,
+                has_tokens: true,
+                thinking_preview: None,
+                thinking_full: None,
+                content_preview: None,
+                tool_calls: Vec::new(),
+                is_error: false,
+                permission_denied: false,
+                model_switch: None,
+                observed_model: "gemini-3.8-flash".to_string(),
+                command_duration_secs: None,
+                command_exit_code: None,
+            }],
+            command_execs: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn plain_english_summary_omits_sessions_and_source_counts() {
+        let cfg = default_config();
+        let catalog = Catalog::new(default_catalog());
+        let scan = ScanResult {
+            sessions: vec![
+                make_session("cli-1", SourceKind::Cli, "2026-11-01", 100_000, 800_000, 100_000),
+                make_session("app-1", SourceKind::App, "2026-11-10", 100_000, 800_000, 100_000),
+            ],
+            diagnostics: ScanDiagnostics {
+                scanned_at: String::new(),
+                scanned_at_local_hm: String::new(),
+                duration_ms: 0,
+                sources: Vec::new(),
+                total_transcripts: 2,
+                total_with_tokens: 2,
+                total_without_tokens: 0,
+                total_parse_errors: 0,
+                total_pb_only: 0,
+                total_corrupted_tool_names_dropped: 0,
+                total_capped_step_gaps: 0,
+                consistency: ConsistencyReport {
+                    ok: true,
+                    session_row_mismatches: 0,
+                    daily_row_mismatches: 0,
+                    session_total: 2_000_000,
+                    daily_total: 2_000_000,
+                    discrepancy: 0,
+                    message: String::new(),
+                },
+                snapshot_runs: 0,
+                warnings: Vec::new(),
+            },
+        };
+        let filter = FilterState {
+            date_preset: "all".to_string(),
+            custom_start: None,
+            custom_end: None,
+            source_filter: "all".to_string(),
+            project_filter: None,
+            model_id: "gemini-3.8-flash".to_string(),
+            currency: "USD".to_string(),
+        };
+
+        let payload = build_dashboard(&scan, &cfg, &catalog, &filter);
+        let summary = generate_plain_english_summary(&payload);
+
+        assert!(summary.contains("From 2026-11-01 to 2026-11-10 you used 2.00M tokens"));
+        assert!(summary.contains("(200.0K new input, 1.60M cached input, 200.0K output)"));
+        assert!(summary.contains("80% were cached re-reads."));
+        assert!(summary.contains(&payload.active_model.name));
+        assert!(!summary.contains("sessions"));
+        assert!(!summary.contains("CLI"));
+        assert!(!summary.contains("App"));
+    }
 }

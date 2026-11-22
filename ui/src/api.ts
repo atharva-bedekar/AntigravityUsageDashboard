@@ -108,7 +108,7 @@ export const api = {
     if (isTauri()) {
       return invoke<string>("copy_summary", { filter });
     }
-    return "From 17 Oct to 15 Nov you used 307.7M tokens in 120 sessions (114 CLI, 6 App). 90% were cached re-reads. At Gemini 3.8 Flash prices that's about ≈ ₹4,707.";
+    return "From 17 Oct to 15 Nov you used 307.7M tokens across 3 projects (88% cached). At Gemini 3.8 Flash prices that's about ≈ ₹4,707.";
   },
 
   async openInExplorer(path: string): Promise<void> {

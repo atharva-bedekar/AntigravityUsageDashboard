@@ -87,7 +87,7 @@ export function renderQuickSearchModal(
 
   host.innerHTML = `
     <div class="modal-backdrop" id="qs-backdrop">
-      <div class="quick-search-modal" role="dialog" aria-label="Quick search">
+      <div class="quick-search-modal" role="dialog" aria-modal="true" aria-label="Quick search">
         <div class="quick-search-input-row">
           <span style="color:var(--text-muted);display:flex">${icons.search(16)}</span>
           <input id="qs-input" class="quick-search-input" type="text" placeholder="Jump to project or screen…" value="${escapeHtml(query)}" />
@@ -139,7 +139,7 @@ export function renderGlossaryDrawer(
 ): void {
   host.innerHTML = `
     <div class="drawer-scrim" id="gloss-scrim">
-      <div class="drawer-panel" role="dialog" aria-label="Glossary">
+      <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="Glossary">
         <div class="drawer-header">
           <div>
             <h3 style="margin:0;font-size:17px;font-weight:500">About these numbers</h3>
@@ -160,7 +160,9 @@ export function renderGlossaryDrawer(
     </div>
   `;
 
-  host.querySelector("#gloss-close")?.addEventListener("click", onClose);
+  const closeBtn = host.querySelector<HTMLButtonElement>("#gloss-close");
+  closeBtn?.addEventListener("click", onClose);
+  closeBtn?.focus({ preventScroll: true });
   host.querySelector("#gloss-scrim")?.addEventListener("click", (e) => {
     if (e.target === e.currentTarget) onClose();
   });

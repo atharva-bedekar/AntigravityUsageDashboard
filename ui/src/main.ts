@@ -8,6 +8,7 @@ import {
   DashboardPayload,
   FilterState,
   NavHistoryEntry,
+  ScanDiagnostics,
   ScreenId,
   TokenUsageFilter,
   TokenUsagePayload,
@@ -111,6 +112,98 @@ const state: AppState = {
 let toastSeq = 1;
 let refreshTimer: number | null = null;
 let tokenUsageSeq = 0;
+let lastOverlayTrigger: HTMLElement | null = null;
+
+const OVERLAY_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(", ");
+
+function captureOverlayTrigger(): void {
+  if (!state.quickSearchOpen && !state.glossaryOpen) {
+    lastOverlayTrigger =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+}
+
+function restoreOverlayTrigger(): void {
+  if (!state.quickSearchOpen && !state.glossaryOpen) {
+    const trigger = lastOverlayTrigger;
+    lastOverlayTrigger = null;
+    if (trigger && trigger.isConnected) {
+      trigger.focus({ preventScroll: true });
+    }
+  }
+}
+
+function openQuickSearch(): void {
+  captureOverlayTrigger();
+  state.glossaryOpen = false;
+  state.quickSearchOpen = true;
+  state.quickSearchQuery = "";
+  state.quickSearchIdx = 0;
+  renderOverlays();
+}
+
+function closeQuickSearch(): void {
+  if (!state.quickSearchOpen) return;
+  state.quickSearchOpen = false;
+  renderOverlays();
+  restoreOverlayTrigger();
+}
+
+function openGlossary(highlight: string | null): void {
+  captureOverlayTrigger();
+  state.quickSearchOpen = false;
+  state.glossaryHighlight = highlight;
+  state.glossaryOpen = true;
+  renderOverlays();
+}
+
+function closeGlossary(): void {
+  if (!state.glossaryOpen) return;
+  state.glossaryOpen = false;
+  renderOverlays();
+  restoreOverlayTrigger();
+}
+
+function trapOverlayTab(e: KeyboardEvent): void {
+  const selector = state.quickSearchOpen
+    ? "#modal-host [role='dialog']"
+    : "#drawer-host [role='dialog']";
+  const dialog = document.querySelector<HTMLElement>(selector);
+  if (!dialog) return;
+
+  const focusables = Array.from(
+    dialog.querySelectorAll<HTMLElement>(OVERLAY_FOCUSABLE_SELECTOR)
+  ).filter((el) => el.tabIndex !== -1 && !el.hasAttribute("disabled"));
+
+  if (focusables.length === 0) {
+    e.preventDefault();
+    return;
+  }
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+
+  if (!active || !dialog.contains(active)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus({ preventScroll: true });
+  } else if (e.shiftKey) {
+    if (active === first || focusables.length === 1) {
+      e.preventDefault();
+      last.focus({ preventScroll: true });
+    }
+  } else if (active === last || focusables.length === 1) {
+    e.preventDefault();
+    first.focus({ preventScroll: true });
+  }
+}
 
 type TokenUsageFocusTarget =
   | { kind: "id"; id: string; fallbackId?: string }
@@ -269,7 +362,7 @@ async function refreshDashboard(): Promise<void> {
 async function runRescan(): Promise<void> {
   if (state.scanning) return;
   state.scanning = true;
-  renderApp();
+  updateTopBarAndStatus();
   try {
     await api.scanAll();
     state.dashboard = await api.getDashboard(state.filter);
@@ -280,7 +373,8 @@ async function runRescan(): Promise<void> {
   } finally {
     state.scanning = false;
     state.initialLoading = false;
-    renderApp();
+    updateTopBarAndStatus();
+    renderBodyOnly();
   }
 }
 
@@ -318,25 +412,89 @@ async function init(): Promise<void> {
   }
 }
 
+function getDiagnosticsStatus(diag: ScanDiagnostics | undefined): {
+  missingFolder: boolean;
+  hasWarnings: boolean;
+} {
+  const missingFolder =
+    (diag?.sources.length ?? 0) > 0 && diag!.sources.every((s) => !s.exists);
+  const hasWarnings =
+    (diag?.totalParseErrors ?? 0) > 0 ||
+    (diag?.warnings.length ?? 0) > 0 ||
+    missingFolder;
+  return { missingFolder, hasWarnings };
+}
+
+function getRescanTitle(diag: ScanDiagnostics | undefined): string {
+  if (state.scanning) return "Scanning local logs…";
+  return `Rescan logs${diag?.scannedAtLocalHm ? ` (last scan ${diag.scannedAtLocalHm})` : ""}`;
+}
+
+function renderRescanButtonInner(diag: ScanDiagnostics | undefined): string {
+  return `
+    ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(14)}
+    <span class="tb-rescan-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
+    ${diag?.scannedAtLocalHm ? `<span class="tb-rescan-time mono">${escapeHtml(diag.scannedAtLocalHm)}</span>` : ""}
+  `;
+}
+
+function renderStatusLineInner(
+  dash: DashboardPayload | null,
+  missingFolder: boolean
+): string {
+  const diag = dash?.diagnostics;
+  return `
+    <span>
+      [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingFolder ? " · log folder missing" : ""} ]
+    </span>
+    ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
+  `;
+}
+
+function updateTopBarAndStatus(): void {
+  const dash = state.dashboard;
+  const diag = dash?.diagnostics;
+  const { missingFolder, hasWarnings } = getDiagnosticsStatus(diag);
+
+  const rescanBtn = document.getElementById("tb-rescan") as HTMLButtonElement | null;
+  if (rescanBtn) {
+    rescanBtn.disabled = state.scanning;
+    rescanBtn.title = getRescanTitle(diag);
+    rescanBtn.innerHTML = renderRescanButtonInner(diag);
+  }
+
+  const statusLine = document.getElementById("status-line");
+  if (statusLine) {
+    statusLine.classList.toggle("has-warnings", hasWarnings);
+    statusLine.innerHTML = renderStatusLineInner(dash, missingFolder);
+  }
+}
+
 function renderApp(): void {
   const root = document.getElementById("app");
   if (!root) return;
 
+  const activeEl = document.activeElement;
+  const prevHost = document.getElementById("screen-host");
+  let hostFocus: TokenUsageFocusTarget | null = null;
+  let activeId: string | null = null;
+  if (activeEl instanceof HTMLElement) {
+    if (prevHost && prevHost.contains(activeEl)) {
+      hostFocus = captureTokenUsageFocus(prevHost);
+    } else if (activeEl.id) {
+      activeId = activeEl.id;
+    }
+  }
+
   const dash = state.dashboard;
   const diag = dash?.diagnostics;
-  const appSrc = diag?.sources.find((s) => s.source.kind === "app");
-  const cliSrc = diag?.sources.find((s) => s.source.kind === "cli");
-  const missingFolder = (appSrc && !appSrc.exists) || (cliSrc && !cliSrc.exists);
-  const hasWarnings =
-    (diag?.totalParseErrors ?? 0) > 0 ||
-    (diag?.warnings.length ?? 0) > 0 ||
-    Boolean(missingFolder);
+  const { missingFolder, hasWarnings } = getDiagnosticsStatus(diag);
 
   root.innerHTML = `
     <div class="app-shell">
       <header class="menu-bar" data-tauri-drag-region>
         <div class="menu-bar-left" data-tauri-drag-region>
-          <button type="button" class="menu-home-btn" id="tb-home" title="Token Usage">
+          <button type="button" class="menu-home-btn" id="tb-home" title="Token Usage" aria-label="Token Usage">
             ${appLogoSvg(15)}
             <span class="menu-app-label">Antigravity Usage</span>
           </button>
@@ -350,12 +508,11 @@ function renderApp(): void {
               type="button"
               class="top-bar-btn"
               id="tb-rescan"
-              title="${state.scanning ? "Scanning local logs…" : `Rescan logs${diag?.scannedAtLocalHm ? ` (last scan ${escapeHtml(diag.scannedAtLocalHm)})` : ""}`}"
+              title="${escapeHtml(getRescanTitle(diag))}"
+              aria-label="Rescan usage data"
               ${state.scanning ? "disabled" : ""}
             >
-              ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(14)}
-              <span class="tb-rescan-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
-              ${diag?.scannedAtLocalHm ? `<span class="tb-rescan-time mono">${escapeHtml(diag.scannedAtLocalHm)}</span>` : ""}
+              ${renderRescanButtonInner(diag)}
             </button>
             <button
               type="button"
@@ -398,10 +555,7 @@ function renderApp(): void {
           </div>
           <button type="button" class="scroll-down-fab" id="scroll-down-fab" title="Scroll down" style="display:none">${icons.arrowDown(15)}</button>
           <div class="status-line ${hasWarnings ? "has-warnings" : ""}" id="status-line">
-            <span>
-              [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingFolder ? " · log folder missing" : ""} ]
-            </span>
-            ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
+            ${renderStatusLineInner(dash, missingFolder)}
           </div>
         </section>
       </main>
@@ -413,6 +567,15 @@ function renderApp(): void {
   attachShellListeners();
   renderBodyOnly();
   renderOverlays();
+
+  if (!state.quickSearchOpen && !state.glossaryOpen) {
+    if (hostFocus) {
+      const newHost = document.getElementById("screen-host");
+      if (newHost) restoreTokenUsageFocus(newHost, hostFocus);
+    } else if (activeId) {
+      document.getElementById(activeId)?.focus({ preventScroll: true });
+    }
+  }
 }
 
 function renderMenuButton(id: "usage" | "view" | "help", label: string): string {
@@ -625,15 +788,38 @@ function renderBodyOnly(): void {
         onBack: () => goBack(),
       }
     );
+  } else if (state.screen === "settings") {
+    const errBanner = document.createElement("div");
+    errBanner.className = "tu-error-banner";
+    errBanner.setAttribute("role", "alert");
+    errBanner.innerHTML = `
+      <span>Settings could not be loaded.</span>
+      <button type="button" class="tu-reset-btn" id="settings-retry-btn">Retry</button>
+    `;
+    const retryBtn = errBanner.querySelector<HTMLButtonElement>("#settings-retry-btn");
+    retryBtn?.addEventListener("click", async () => {
+      retryBtn.disabled = true;
+      try {
+        const nextCfg = await api.getSettings();
+        state.config = nextCfg;
+        state.filter.modelId = nextCfg.defaultModelId;
+        state.filter.currency = nextCfg.reportingCurrency;
+        applyDisplayPreferences(nextCfg);
+        setupAutoRefresh(nextCfg);
+        renderBodyOnly();
+      } catch (err) {
+        retryBtn.disabled = false;
+        showToast(`Failed to load settings: ${String(err)}`);
+      }
+    });
+    contentWrap.appendChild(errBanner);
   }
 
   // Bind glossary info buttons inside rendered screen
   host.querySelectorAll<HTMLButtonElement>(".info-btn[data-glossary]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      state.glossaryHighlight = btn.dataset.glossary ?? null;
-      state.glossaryOpen = true;
-      renderOverlays();
+      openGlossary(btn.dataset.glossary ?? null);
     });
   });
 
@@ -655,10 +841,7 @@ function renderOverlays(): void {
           state.quickSearchIdx = 0;
           renderOverlays();
         },
-        () => {
-          state.quickSearchOpen = false;
-          renderOverlays();
-        },
+        () => closeQuickSearch(),
         (scr) => navigate(scr),
         (proj) => {
           state.tokenUsageFilter = { ...state.tokenUsageFilter, project: proj };
@@ -673,10 +856,7 @@ function renderOverlays(): void {
 
   if (drawerHost) {
     if (state.glossaryOpen) {
-      renderGlossaryDrawer(drawerHost, state.glossaryHighlight, () => {
-        state.glossaryOpen = false;
-        renderOverlays();
-      });
+      renderGlossaryDrawer(drawerHost, state.glossaryHighlight, () => closeGlossary());
     } else {
       drawerHost.innerHTML = "";
     }
@@ -768,8 +948,7 @@ function attachShellListeners(): void {
   });
   document.getElementById("m-glossary")?.addEventListener("click", () => {
     state.openMenu = null;
-    state.glossaryOpen = true;
-    renderOverlays();
+    openGlossary(null);
   });
   document.getElementById("m-about")?.addEventListener("click", () => {
     state.settingsSection = "about";
@@ -777,14 +956,14 @@ function attachShellListeners(): void {
   });
 
   // Top bar actions
-  document.getElementById("tb-home")?.addEventListener("click", () => navigate("token-usage"));
+  document.getElementById("tb-home")?.addEventListener("click", () => {
+    if (state.screen === "token-usage") return;
+    navigate("token-usage");
+  });
   document.getElementById("tb-rescan")?.addEventListener("click", () => void runRescan());
   document.getElementById("tb-search")?.addEventListener("click", () => {
     state.openMenu = null;
-    state.quickSearchOpen = true;
-    state.quickSearchQuery = "";
-    state.quickSearchIdx = 0;
-    renderOverlays();
+    openQuickSearch();
   });
   document.getElementById("tb-settings")?.addEventListener("click", () => {
     navigate(state.screen === "settings" ? "token-usage" : "settings");
@@ -816,17 +995,21 @@ window.addEventListener("click", () => {
 window.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
-    state.quickSearchOpen = !state.quickSearchOpen;
-    state.quickSearchQuery = "";
-    state.quickSearchIdx = 0;
-    renderOverlays();
+    if (state.quickSearchOpen) {
+      closeQuickSearch();
+    } else {
+      openQuickSearch();
+    }
+  } else if (e.key === "F5") {
+    e.preventDefault();
+    void runRescan();
+  } else if (e.key === "Tab" && (state.quickSearchOpen || state.glossaryOpen)) {
+    trapOverlayTab(e);
   } else if (e.key === "Escape") {
     if (state.quickSearchOpen) {
-      state.quickSearchOpen = false;
-      renderOverlays();
+      closeQuickSearch();
     } else if (state.glossaryOpen) {
-      state.glossaryOpen = false;
-      renderOverlays();
+      closeGlossary();
     } else if (state.openMenu) {
       state.openMenu = null;
       renderApp();
