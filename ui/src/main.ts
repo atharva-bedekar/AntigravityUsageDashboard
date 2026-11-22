@@ -10,12 +10,16 @@ import {
   NavHistoryEntry,
   ScanDiagnostics,
   ScreenId,
+  SessionDagPayload,
+  SessionsFilter,
+  SessionsOverviewPayload,
   TokenUsageFilter,
   TokenUsagePayload,
 } from "./types.ts";
 import { escapeHtml } from "./format.ts";
 import { appLogoSvg, icons } from "./icons.ts";
 import { ModelSortState, renderTokenUsage } from "./screens/tokenUsage.ts";
+import { renderSessions, SessionSortState } from "./screens/sessions.ts";
 import { renderSettings, SettingsSection } from "./screens/settings.ts";
 import {
   renderFirstRunEmpty,
@@ -63,6 +67,15 @@ interface AppState {
   tokenUsageError: string | null;
   modelSort: ModelSortState;
   showTimeChart: boolean;
+  sessionsFilter: SessionsFilter;
+  sessionsOverview: SessionsOverviewPayload | null;
+  sessionsLoading: boolean;
+  sessionsError: string | null;
+  sessionSort: SessionSortState;
+  selectedSessionId: string | null;
+  sessionDag: SessionDagPayload | null;
+  sessionDagLoading: boolean;
+  sessionDagError: string | null;
   settingsSection: SettingsSection;
   settingsSearch: string;
   fxError: string | null;
@@ -105,6 +118,15 @@ const state: AppState = {
   tokenUsageError: null,
   modelSort: { column: "total", direction: "desc" },
   showTimeChart: readShowTimeChart(),
+  sessionsFilter: { period: "1w", project: null },
+  sessionsOverview: null,
+  sessionsLoading: false,
+  sessionsError: null,
+  sessionSort: { column: "total", direction: "desc" },
+  selectedSessionId: null,
+  sessionDag: null,
+  sessionDagLoading: false,
+  sessionDagError: null,
   settingsSection: "pricing",
   settingsSearch: "",
   fxError: null,
@@ -114,6 +136,8 @@ const state: AppState = {
 let toastSeq = 1;
 let refreshTimer: number | null = null;
 let tokenUsageSeq = 0;
+let sessionsSeq = 0;
+let sessionDagSeq = 0;
 let lastOverlayTrigger: HTMLElement | null = null;
 
 const OVERLAY_FOCUSABLE_SELECTOR = [
@@ -211,14 +235,24 @@ function trapOverlayTab(e: KeyboardEvent): void {
   }
 }
 
-type TokenUsageFocusTarget =
-  | { kind: "id"; id: string; fallbackId?: string }
+type ScreenFocusTarget =
+  | { kind: "id"; id: string; fallbackId?: string; fallbackSessionId?: string }
   | { kind: "sort"; col: string }
-  | { kind: "row"; model: string };
+  | { kind: "row"; model: string }
+  | { kind: "sess-sort"; col: string }
+  | { kind: "session"; sessionId: string };
 
-let pendingTokenUsageFocus: TokenUsageFocusTarget | null = null;
+let pendingScreenFocus: ScreenFocusTarget | null = null;
 
-function captureTokenUsageFocus(host: HTMLElement): TokenUsageFocusTarget | null {
+function findSessionButton(host: HTMLElement, sessionId: string): HTMLElement | null {
+  return (
+    Array.from(host.querySelectorAll<HTMLElement>(".sess-name-btn[data-session-id]")).find(
+      (candidate) => candidate.dataset.sessionId === sessionId
+    ) ?? null
+  );
+}
+
+function captureScreenFocus(host: HTMLElement): ScreenFocusTarget | null {
   const active = document.activeElement;
   if (!(active instanceof HTMLElement) || !host.contains(active)) {
     return null;
@@ -229,6 +263,29 @@ function captureTokenUsageFocus(host: HTMLElement): TokenUsageFocusTarget | null
     active.id === "tu-retry-btn"
   ) {
     return { kind: "id", id: active.id, fallbackId: "tu-filter-period" };
+  }
+  if (
+    active.id === "sess-reset-filters" ||
+    active.id === "sess-empty-reset" ||
+    active.id === "sess-retry-btn"
+  ) {
+    return { kind: "id", id: active.id, fallbackId: "sess-filter-period" };
+  }
+  if (active.id === "dag-retry-btn") {
+    if (state.selectedSessionId !== null) {
+      return { kind: "id", id: active.id, fallbackId: "dag-close-btn" };
+    }
+    return null;
+  }
+  if (active.id === "dag-close-btn") {
+    if (state.selectedSessionId !== null) {
+      return {
+        kind: "id",
+        id: active.id,
+        fallbackSessionId: state.selectedSessionId,
+      };
+    }
+    return null;
   }
   if (active.id) {
     return { kind: "id", id: active.id };
@@ -241,12 +298,20 @@ function captureTokenUsageFocus(host: HTMLElement): TokenUsageFocusTarget | null
   if (modelRow && host.contains(modelRow) && modelRow.dataset.model !== undefined) {
     return { kind: "row", model: modelRow.dataset.model };
   }
+  const sessSortBtn = active.closest<HTMLElement>(".sess-sort-btn[data-col]");
+  if (sessSortBtn && host.contains(sessSortBtn) && sessSortBtn.dataset.col) {
+    return { kind: "sess-sort", col: sessSortBtn.dataset.col };
+  }
+  const sessBtn = active.closest<HTMLElement>(".sess-name-btn[data-session-id]");
+  if (sessBtn && host.contains(sessBtn) && sessBtn.dataset.sessionId !== undefined) {
+    return { kind: "session", sessionId: sessBtn.dataset.sessionId };
+  }
   return null;
 }
 
-function restoreTokenUsageFocus(
+function restoreScreenFocus(
   host: HTMLElement,
-  target: TokenUsageFocusTarget | null
+  target: ScreenFocusTarget | null
 ): void {
   if (!target) return;
   let el: HTMLElement | null = null;
@@ -254,6 +319,9 @@ function restoreTokenUsageFocus(
     el = host.querySelector<HTMLElement>(`#${CSS.escape(target.id)}`);
     if (!el && target.fallbackId) {
       el = host.querySelector<HTMLElement>(`#${CSS.escape(target.fallbackId)}`);
+    }
+    if (!el && target.fallbackSessionId) {
+      el = findSessionButton(host, target.fallbackSessionId);
     }
   } else if (target.kind === "sort") {
     el =
@@ -265,6 +333,13 @@ function restoreTokenUsageFocus(
       Array.from(host.querySelectorAll<HTMLElement>(".tu-model-row")).find(
         (candidate) => candidate.dataset.model === target.model
       ) ?? null;
+  } else if (target.kind === "sess-sort") {
+    el =
+      Array.from(host.querySelectorAll<HTMLElement>(".sess-sort-btn[data-col]")).find(
+        (candidate) => candidate.dataset.col === target.col
+      ) ?? null;
+  } else if (target.kind === "session") {
+    el = findSessionButton(host, target.sessionId);
   }
   el?.focus({ preventScroll: true });
 }
@@ -306,7 +381,7 @@ function applyDisplayPreferences(cfg: AppConfig): void {
 function navigate(screen: ScreenId, pushHistory = true): void {
   state.screen = screen;
   state.openMenu = null;
-  pendingTokenUsageFocus = null;
+  pendingScreenFocus = null;
   if (pushHistory) {
     state.history = state.history.slice(0, state.historyIdx + 1);
     state.history.push({ screen });
@@ -327,13 +402,30 @@ function goBack(): void {
   navigate(entry.screen, false);
 }
 
+function clearSelectedSessionDag(): void {
+  state.selectedSessionId = null;
+  state.sessionDag = null;
+  state.sessionDagLoading = false;
+  state.sessionDagError = null;
+  sessionDagSeq++;
+}
+
+function closeSessionDag(): void {
+  const prevSessionId = state.selectedSessionId;
+  clearSelectedSessionDag();
+  if (prevSessionId !== null) {
+    pendingScreenFocus = { kind: "session", sessionId: prevSessionId };
+  }
+  renderBodyOnly();
+}
+
 async function refreshTokenUsage(): Promise<void> {
   const reqId = ++tokenUsageSeq;
   const host = document.getElementById("screen-host");
   if (state.screen === "token-usage" && !state.initialLoading && host) {
-    const captured = captureTokenUsageFocus(host);
+    const captured = captureScreenFocus(host);
     if (captured) {
-      pendingTokenUsageFocus = captured;
+      pendingScreenFocus = captured;
     }
   }
   state.tokenUsageLoading = true;
@@ -356,6 +448,70 @@ async function refreshTokenUsage(): Promise<void> {
   }
 }
 
+async function refreshSessionsOverview(): Promise<void> {
+  const reqId = ++sessionsSeq;
+  const host = document.getElementById("screen-host");
+  if (state.screen === "sessions" && !state.initialLoading && host) {
+    const captured = captureScreenFocus(host);
+    if (captured) {
+      pendingScreenFocus = captured;
+    }
+  }
+  state.sessionsLoading = true;
+  state.sessionsError = null;
+  if (state.screen === "sessions" && !state.initialLoading) {
+    renderBodyOnly();
+  }
+  try {
+    const payload = await api.getSessionsOverview(state.sessionsFilter);
+    if (reqId !== sessionsSeq) return;
+    state.sessionsOverview = payload;
+    state.sessionsLoading = false;
+    if (
+      state.selectedSessionId !== null &&
+      !payload.sessions.some((s) => s.sessionId === state.selectedSessionId)
+    ) {
+      clearSelectedSessionDag();
+    }
+  } catch (err) {
+    if (reqId !== sessionsSeq) return;
+    state.sessionsError = String(err);
+    state.sessionsLoading = false;
+  }
+  if (state.screen === "sessions" && !state.initialLoading) {
+    renderBodyOnly();
+  }
+}
+
+async function loadSessionDag(sessionId: string): Promise<void> {
+  const reqId = ++sessionDagSeq;
+  const host = document.getElementById("screen-host");
+  if (state.screen === "sessions" && !state.initialLoading && host) {
+    const captured = captureScreenFocus(host);
+    if (captured) {
+      pendingScreenFocus = captured;
+    }
+  }
+  state.sessionDagLoading = true;
+  state.sessionDagError = null;
+  if (state.screen === "sessions" && !state.initialLoading) {
+    renderBodyOnly();
+  }
+  try {
+    const payload = await api.getSessionDag(sessionId);
+    if (reqId !== sessionDagSeq) return;
+    state.sessionDag = payload;
+    state.sessionDagLoading = false;
+  } catch (err) {
+    if (reqId !== sessionDagSeq) return;
+    state.sessionDagError = String(err);
+    state.sessionDagLoading = false;
+  }
+  if (state.screen === "sessions" && !state.initialLoading) {
+    renderBodyOnly();
+  }
+}
+
 async function refreshDashboard(): Promise<void> {
   try {
     state.dashboard = await api.getDashboard(state.filter);
@@ -372,7 +528,10 @@ async function runRescan(): Promise<void> {
   try {
     await api.scanAll();
     state.dashboard = await api.getDashboard(state.filter);
-    await refreshTokenUsage();
+    await Promise.all([refreshTokenUsage(), refreshSessionsOverview()]);
+    if (state.selectedSessionId) {
+      await loadSessionDag(state.selectedSessionId);
+    }
     showToast("Scan complete");
   } catch (err) {
     showToast(`Scan failed: ${String(err)}`);
@@ -409,7 +568,7 @@ async function init(): Promise<void> {
 
     await api.scanAll();
     state.dashboard = await api.getDashboard(state.filter);
-    await refreshTokenUsage();
+    await Promise.all([refreshTokenUsage(), refreshSessionsOverview()]);
   } catch (err) {
     showToast(`Startup error: ${String(err)}`);
   } finally {
@@ -438,6 +597,7 @@ function getRescanTitle(diag: ScanDiagnostics | undefined): string {
 
 const navItems: Array<{ id: ScreenId; label: string; icon: (s?: number) => string }> = [
   { id: "token-usage", label: "Token Usage", icon: icons.overview },
+  { id: "sessions", label: "Sessions", icon: icons.sessions },
 ];
 
 function renderRescanButtonInner(diag: ScanDiagnostics | undefined): string {
@@ -459,7 +619,7 @@ function renderStatusLineInner(
     <span>
       [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingFolder ? " · log folder missing" : ""} ]
     </span>
-    ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
+    ${state.screen === "token-usage" || state.screen === "sessions" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
   `;
 }
 
@@ -488,11 +648,11 @@ function renderApp(): void {
 
   const activeEl = document.activeElement;
   const prevHost = document.getElementById("screen-host");
-  let hostFocus: TokenUsageFocusTarget | null = null;
+  let hostFocus: ScreenFocusTarget | null = null;
   let activeId: string | null = null;
   if (activeEl instanceof HTMLElement) {
     if (prevHost && prevHost.contains(activeEl)) {
-      hostFocus = captureTokenUsageFocus(prevHost);
+      hostFocus = captureScreenFocus(prevHost);
     } else if (activeEl.id) {
       activeId = activeEl.id;
     }
@@ -626,7 +786,7 @@ function renderApp(): void {
   if (!state.quickSearchOpen && !state.glossaryOpen) {
     if (hostFocus) {
       const newHost = document.getElementById("screen-host");
-      if (newHost) restoreTokenUsageFocus(newHost, hostFocus);
+      if (newHost) restoreScreenFocus(newHost, hostFocus);
     } else if (activeId) {
       document.getElementById(activeId)?.focus({ preventScroll: true });
     }
@@ -644,6 +804,7 @@ function renderMenuButton(id: "usage" | "view" | "help", label: string): string 
   } else if (id === "view") {
     dropdownItems = `
       <button type="button" class="menu-dropdown-item" data-nav="token-usage">Token Usage</button>
+      <button type="button" class="menu-dropdown-item" data-nav="sessions">Sessions</button>
       <button type="button" class="menu-dropdown-item" data-nav="settings">Settings</button>
       <div class="menu-dropdown-sep"></div>
       <button type="button" class="menu-dropdown-item" id="m-toggle-theme">Toggle Light / Dark theme</button>`;
@@ -724,10 +885,10 @@ function renderBodyOnly(): void {
   const focusInsideOrBody =
     activeEl === document.body ||
     activeEl === null ||
-    (activeEl instanceof HTMLElement && host.contains(activeEl));
-  const tuFocusTarget =
-    state.screen === "token-usage"
-      ? captureTokenUsageFocus(host) ?? (focusInsideOrBody ? pendingTokenUsageFocus : null)
+    (activeEl instanceof Element && host.contains(activeEl));
+  const screenFocusTarget =
+    state.screen === "token-usage" || state.screen === "sessions"
+      ? captureScreenFocus(host) ?? (focusInsideOrBody ? pendingScreenFocus : null)
       : null;
 
   const contentWrap = document.createElement("div");
@@ -810,9 +971,99 @@ function renderBodyOnly(): void {
         });
         contentWrap.appendChild(emptyBanner);
       }
-      restoreTokenUsageFocus(host, tuFocusTarget);
+      restoreScreenFocus(host, screenFocusTarget);
       if (!state.tokenUsageLoading) {
-        pendingTokenUsageFocus = null;
+        pendingScreenFocus = null;
+      }
+    }
+  } else if (state.screen === "sessions") {
+    if (state.sessionsLoading && !state.sessionsOverview) {
+      contentWrap.setAttribute("aria-busy", "true");
+      contentWrap.innerHTML = `<div class="loader-overlay"><div class="ring-spinner"></div><div>Loading sessions…</div></div>`;
+    } else {
+      if (state.sessionsLoading) {
+        contentWrap.setAttribute("aria-busy", "true");
+      }
+      if (state.sessionsError) {
+        const errBanner = document.createElement("div");
+        errBanner.className = "tu-error-banner";
+        errBanner.setAttribute("role", "alert");
+        if (state.sessionsOverview) {
+          errBanner.style.marginBottom = "var(--card-gap)";
+        }
+        errBanner.innerHTML = `
+          <span>Failed to load sessions: ${escapeHtml(state.sessionsError)}</span>
+          <button type="button" class="tu-reset-btn" id="sess-retry-btn">Retry</button>
+        `;
+        errBanner.querySelector("#sess-retry-btn")?.addEventListener("click", () => {
+          void refreshSessionsOverview();
+        });
+        contentWrap.appendChild(errBanner);
+      }
+      if (state.sessionsOverview) {
+        const sessHost = document.createElement("div");
+        contentWrap.appendChild(sessHost);
+        renderSessions(
+          sessHost,
+          state.sessionsOverview,
+          state.sessionSort,
+          state.selectedSessionId,
+          state.sessionDag,
+          state.sessionDagLoading,
+          state.sessionDagError,
+          numFmt,
+          {
+            onFilterChange: (patch) => {
+              state.sessionsFilter = { ...state.sessionsFilter, ...patch };
+              clearSelectedSessionDag();
+              void refreshSessionsOverview();
+            },
+            onResetFilters: () => {
+              state.sessionsFilter = { period: "1w", project: null };
+              clearSelectedSessionDag();
+              void refreshSessionsOverview();
+            },
+            onSortChange: (next) => {
+              state.sessionSort = next;
+              renderBodyOnly();
+            },
+            onSelectSession: (sessionId) => {
+              if (sessionId === state.selectedSessionId) {
+                clearSelectedSessionDag();
+                renderBodyOnly();
+              } else {
+                state.selectedSessionId = sessionId;
+                state.sessionDag = null;
+                state.sessionDagError = null;
+                state.sessionDagLoading = true;
+                renderBodyOnly();
+                void loadSessionDag(sessionId);
+              }
+            },
+            onCloseDag: () => {
+              closeSessionDag();
+            },
+            onRetryDag: (sessionId) => {
+              void loadSessionDag(sessionId);
+            },
+          }
+        );
+      } else if (!state.sessionsError) {
+        const emptyBanner = document.createElement("div");
+        emptyBanner.className = "tu-error-banner";
+        emptyBanner.setAttribute("role", "alert");
+        emptyBanner.innerHTML = `
+          <span>Sessions data is not loaded yet.</span>
+          <button type="button" class="tu-reset-btn" id="sess-retry-btn">Load</button>
+        `;
+        emptyBanner.querySelector("#sess-retry-btn")?.addEventListener("click", () => {
+          void refreshSessionsOverview();
+        });
+        contentWrap.appendChild(emptyBanner);
+      }
+      restoreScreenFocus(host, screenFocusTarget);
+      if (!state.sessionsLoading && !state.sessionDagLoading) {
+        pendingScreenFocus = null;
       }
     }
   } else if (state.screen === "settings" && cfg) {
@@ -1125,6 +1376,8 @@ window.addEventListener("keydown", (e) => {
       document
         .querySelector<HTMLButtonElement>(`.menu-trigger[data-menu="${prevMenu}"]`)
         ?.focus({ preventScroll: true });
+    } else if (state.screen === "sessions" && state.selectedSessionId !== null) {
+      closeSessionDag();
     } else if (state.screen === "settings") {
       goBack();
     }

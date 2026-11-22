@@ -438,7 +438,7 @@ export interface AboutInfo {
   dbPath: string;
 }
 
-export type ScreenId = "token-usage" | "settings";
+export type ScreenId = "token-usage" | "sessions" | "settings";
 
 export interface NavHistoryEntry {
   screen: ScreenId;
