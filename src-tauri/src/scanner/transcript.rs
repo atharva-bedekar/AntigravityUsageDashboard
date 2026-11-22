@@ -103,7 +103,7 @@ struct PendingCommand {
 }
 
 /// Parse an ISO-8601 timestamp string into a fixed-offset DateTime.
-fn parse_iso_ts(raw: &str) -> Option<DateTime<FixedOffset>> {
+pub(crate) fn parse_iso_ts(raw: &str) -> Option<DateTime<FixedOffset>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return None;
@@ -135,6 +135,30 @@ fn clean_model_name(raw: &str) -> String {
     let first_sentence = raw.split(". ").next().unwrap_or(raw);
     let trimmed = first_sentence.trim().trim_matches('`').trim();
     truncate_chars(trimmed, 60)
+}
+
+fn normalize_model_label(raw: &str) -> String {
+    let cleaned = clean_model_name(raw);
+    if cleaned.is_empty() || cleaned.eq_ignore_ascii_case("none") {
+        "Unrecorded".to_string()
+    } else {
+        cleaned
+    }
+}
+
+fn assign_observed_models(steps: &mut [StepRecord]) {
+    let mut current = steps
+        .iter()
+        .find_map(|s| s.model_switch.as_ref())
+        .map(|sw| normalize_model_label(&sw.from_model))
+        .unwrap_or_else(|| "Unrecorded".to_string());
+
+    for step in steps.iter_mut() {
+        if let Some(sw) = &step.model_switch {
+            current = normalize_model_label(&sw.to_model);
+        }
+        step.observed_model = current.clone();
+    }
 }
 
 fn parse_command_completion(content: &str) -> Option<(f64, Option<i32>, bool)> {
@@ -455,10 +479,13 @@ pub fn parse_transcript_reader<R: BufRead>(
             is_error,
             permission_denied,
             model_switch,
+            observed_model: String::new(),
             command_duration_secs,
             command_exit_code,
         });
     }
+
+    assign_observed_models(&mut out.steps);
 
     if let (Some(f), Some(l)) = (first_dt, last_dt) {
         let secs = (l - f).num_seconds();

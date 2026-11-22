@@ -92,6 +92,8 @@ pub struct StepRecord {
     pub is_error: bool,
     pub permission_denied: bool,
     pub model_switch: Option<ModelSwitchRecord>,
+    #[serde(default)]
+    pub observed_model: String,
     pub command_duration_secs: Option<f64>,
     pub command_exit_code: Option<i32>,
 }
@@ -630,4 +632,103 @@ pub struct AboutInfo {
     pub antigravity_cli_version: Option<String>,
     pub config_path: String,
     pub db_path: String,
+}
+
+// ---------------------------------------------------------------------------
+// Token Usage Dashboard Models
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TimePeriod {
+    #[serde(rename = "1d")]
+    OneDay,
+    #[serde(rename = "1w")]
+    OneWeek,
+    #[serde(rename = "1m")]
+    OneMonth,
+    #[serde(rename = "6m")]
+    SixMonths,
+    #[serde(rename = "lifetime")]
+    Lifetime,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TimeGranularity {
+    Hourly,
+    Daily,
+    Weekly,
+    Monthly,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "agentType", rename_all = "camelCase")]
+pub enum AgentFilter {
+    All,
+    MainOnly,
+    SubagentsOnly,
+    AgentType(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsageFilter {
+    pub period: TimePeriod,
+    pub project: Option<String>,
+    pub model: Option<String>,
+    pub agent: AgentFilter,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsageTotals {
+    pub fresh_in: u64,
+    pub cached: u64,
+    pub output: u64,
+    pub total: u64,
+    pub cache_hit_rate: f64,
+    pub wall_time_secs: u64,
+    pub calls: u64,
+    pub sessions: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimeUsageBucket {
+    pub key: String,
+    pub axis_label: String,
+    pub range_label: String,
+    pub fresh_in: u64,
+    pub cached: u64,
+    pub output: u64,
+    pub total: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelUsageRow {
+    pub model: String,
+    pub fresh_in: u64,
+    pub cached: u64,
+    pub output: u64,
+    pub total: u64,
+    pub cache_hit_rate: f64,
+    pub wall_time_secs: u64,
+    pub calls: u64,
+    pub sessions: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenUsagePayload {
+    pub filter: TokenUsageFilter,
+    pub window_start: Option<String>,
+    pub window_end: String,
+    pub granularity: TimeGranularity,
+    pub available_projects: Vec<String>,
+    pub available_models: Vec<String>,
+    pub available_agent_types: Vec<String>,
+    pub totals: TokenUsageTotals,
+    pub time_series: Vec<TimeUsageBucket>,
+    pub by_model: Vec<ModelUsageRow>,
 }

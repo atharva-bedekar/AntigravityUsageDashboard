@@ -123,6 +123,48 @@ fn transcript_parser_handles_tokens_corrupt_tools_stamps_and_switches() {
 }
 
 #[test]
+fn transcript_assigns_observed_model_from_switches_and_unrecorded() {
+    // 1. Transcript with switch on step 1 from Gemini 3.8 Flash -> Gemini 4 Argon
+    let with_switch = concat!(
+        "{\"step_index\":0,\"type\":\"USER_INPUT\",\"source\":\"USER_EXPLICIT\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"content\":\"Hello\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"The user changed setting `Model Selection` from `Gemini 3.8 Flash` to `Gemini 4 Argon`\"}\n",
+        "{\"step_index\":2,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:10Z\",\"input_tokens\":150,\"output_tokens\":30,\"content\":\"Follow up\"}\n"
+    );
+    let parsed_switch = parse_transcript_reader(
+        &mut Cursor::new(with_switch.as_bytes()),
+        "synthetic/with_switch.jsonl".to_string(),
+    )
+    .expect("parse with_switch");
+    assert_eq!(parsed_switch.steps[0].observed_model, "Gemini 3.8 Flash");
+    assert_eq!(parsed_switch.steps[1].observed_model, "Gemini 4 Argon");
+    assert_eq!(parsed_switch.steps[2].observed_model, "Gemini 4 Argon");
+
+    // 2. Transcript with switch on step 0 from None -> Claude Sonnet 4
+    let from_none = concat!(
+        "{\"step_index\":0,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"The user changed setting `Model Selection` from `None` to `Claude Sonnet 4`\"}\n"
+    );
+    let parsed_none = parse_transcript_reader(
+        &mut Cursor::new(from_none.as_bytes()),
+        "synthetic/from_none.jsonl".to_string(),
+    )
+    .expect("parse from_none");
+    assert_eq!(parsed_none.steps[0].observed_model, "Claude Sonnet 4");
+
+    // 3. Transcript with zero switch notices assigns every step "Unrecorded"
+    let no_switch = concat!(
+        "{\"step_index\":0,\"type\":\"USER_INPUT\",\"source\":\"USER_EXPLICIT\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"content\":\"Hello\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"Hi\"}\n"
+    );
+    let parsed_no_switch = parse_transcript_reader(
+        &mut Cursor::new(no_switch.as_bytes()),
+        "synthetic/no_switch.jsonl".to_string(),
+    )
+    .expect("parse no_switch");
+    assert_eq!(parsed_no_switch.steps[0].observed_model, "Unrecorded");
+    assert_eq!(parsed_no_switch.steps[1].observed_model, "Unrecorded");
+}
+
+#[test]
 fn transcript_file_preference_picks_full_over_plain() {
     let tmp = TempDir::new("pref");
     let logs = tmp.path.join("sess1").join(".system_generated").join("logs");
