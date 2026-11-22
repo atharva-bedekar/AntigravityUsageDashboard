@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   AboutInfo,
   AppConfig,
+  DagEdge,
+  DagNode,
   DashboardPayload,
   ExportResult,
   FilterState,
@@ -9,7 +11,12 @@ import {
   ForecastResult,
   ModelUsageRow,
   ScanDiagnostics,
+  SessionDagGraph,
+  SessionDagPayload,
   SessionDetailPayload,
+  SessionOverviewRow,
+  SessionsFilter,
+  SessionsOverviewPayload,
   TimeGranularity,
   TimePeriod,
   TimeUsageBucket,
@@ -42,6 +49,20 @@ export const api = {
       return invoke<TokenUsagePayload>("get_token_usage", { filter });
     }
     return mockTokenUsage(filter);
+  },
+
+  async getSessionsOverview(filter: SessionsFilter): Promise<SessionsOverviewPayload> {
+    if (isTauri()) {
+      return invoke<SessionsOverviewPayload>("get_sessions_overview", { filter });
+    }
+    return mockSessionsOverview(filter);
+  },
+
+  async getSessionDag(sessionId: string): Promise<SessionDagPayload> {
+    if (isTauri()) {
+      return invoke<SessionDagPayload>("get_session_dag", { sessionId });
+    }
+    return mockSessionDag(sessionId);
   },
 
   async getSessionDetail(
@@ -1251,5 +1272,578 @@ function mockForecast(method: ForecastMethod, horizonDays: number, metric: "cost
     assumptions: "Forecasts require at least 14 active days.",
     notes: [],
     points: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sessions & DAG mocks (browser-only dev fallback)
+// ---------------------------------------------------------------------------
+
+function mockIsoHoursAgo(hoursAgo: number): string {
+  return new Date(MOCK_NOW.getTime() - hoursAgo * HOUR_MS).toISOString();
+}
+
+function makeMockDagNode(input: {
+  nodeId: string;
+  sessionId: string;
+  parentNodeId: string | null;
+  isRoot: boolean;
+  waveIndex: number;
+  agentType: string;
+  roleLabel: string;
+  model: string;
+  freshIn: number;
+  cached: number;
+  output: number;
+  wallTimeSecs: number;
+  calls: number;
+  toolCallCount: number;
+  messageTurns: number;
+}): DagNode {
+  const inputTotal = input.freshIn + input.cached;
+  return {
+    ...input,
+    total: inputTotal + input.output,
+    cacheHitRate: inputTotal > 0 ? input.cached / inputTotal : 0,
+  };
+}
+
+function summarizeGraphForRow(
+  graph: SessionDagGraph,
+  extras: {
+    source: SessionOverviewRow["source"];
+    firstHoursAgo: number;
+    lastHoursAgo: number;
+    linkedSessionId: string | null;
+    linkDirection: SessionOverviewRow["linkDirection"];
+    linkedPlanName: string | null;
+  }
+): SessionOverviewRow {
+  let freshIn = 0;
+  let cached = 0;
+  let output = 0;
+  let calls = 0;
+  let subagentCount = 0;
+  let maxWall = 0;
+  let subWall = 0;
+
+  for (const node of graph.nodes) {
+    freshIn += node.freshIn;
+    cached += node.cached;
+    output += node.output;
+    calls += node.calls;
+    if (node.isRoot) {
+      maxWall = node.wallTimeSecs;
+    } else {
+      subagentCount += 1;
+      subWall += node.wallTimeSecs;
+    }
+  }
+  const inputTotal = freshIn + cached;
+  return {
+    sessionId: graph.sessionId,
+    title: graph.title,
+    project: graph.project,
+    source: extras.source,
+    role: graph.role,
+    subagentCount,
+    freshIn,
+    cached,
+    output,
+    total: inputTotal + output,
+    cacheHitRate: inputTotal > 0 ? cached / inputTotal : 0,
+    wallTimeSecs: Math.max(maxWall, Math.round(maxWall + subWall * 0.2)),
+    calls,
+    firstUtc: mockIsoHoursAgo(extras.firstHoursAgo),
+    lastUtc: mockIsoHoursAgo(extras.lastHoursAgo),
+    linkedSessionId: extras.linkedSessionId,
+    linkDirection: extras.linkDirection,
+    linkedPlanName: extras.linkedPlanName,
+  };
+}
+
+function buildPlannerMockGraph(): SessionDagGraph {
+  const sessionId = "sess-planner-01";
+  const nodes: DagNode[] = [
+    makeMockDagNode({
+      nodeId: "planner-root",
+      sessionId,
+      parentNodeId: null,
+      isRoot: true,
+      waveIndex: 0,
+      agentType: "planner",
+      roleLabel: "Planner",
+      model: "Gemini 4 Argon",
+      freshIn: 480_000,
+      cached: 3_620_000,
+      output: 68_000,
+      wallTimeSecs: 420,
+      calls: 26,
+      toolCallCount: 19,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "planner-res-1",
+      sessionId: "sub-planner-res-1",
+      parentNodeId: "planner-root",
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "researcher",
+      roleLabel: "Researcher — Backend & Schema",
+      model: "Gemini 4 Hydrogen",
+      freshIn: 145_000,
+      cached: 1_240_000,
+      output: 18_500,
+      wallTimeSecs: 95,
+      calls: 12,
+      toolCallCount: 14,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "planner-res-2",
+      sessionId: "sub-planner-res-2",
+      parentNodeId: "planner-root",
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "researcher",
+      roleLabel: "Researcher — UI & Charts",
+      model: "Gemini 4 Neon",
+      freshIn: 132_000,
+      cached: 1_120_000,
+      output: 16_200,
+      wallTimeSecs: 88,
+      calls: 10,
+      toolCallCount: 11,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "planner-critic-1",
+      sessionId: "sub-planner-critic-1",
+      parentNodeId: "planner-root",
+      isRoot: false,
+      waveIndex: 2,
+      agentType: "plan-critic",
+      roleLabel: "Plan Critic",
+      model: "Gemini 4 Argon",
+      freshIn: 165_000,
+      cached: 1_380_000,
+      output: 24_800,
+      wallTimeSecs: 142,
+      calls: 15,
+      toolCallCount: 8,
+      messageTurns: 3,
+    }),
+  ];
+
+  const edges: DagEdge[] = [
+    { fromNodeId: "planner-root", toNodeId: "planner-res-1", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "planner-root", toNodeId: "planner-res-2", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "planner-root", toNodeId: "planner-critic-1", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "planner-critic-1", toNodeId: "planner-root", kind: "feedback", messageTurns: 3 },
+  ];
+
+  return {
+    sessionId,
+    title: "Plan Token Usage & Sessions DAG UI",
+    project: "AntigravityUsageDashboard",
+    role: "planner",
+    waveCount: 2,
+    nodes,
+    edges,
+  };
+}
+
+function buildOrchestratorMockGraph(): SessionDagGraph {
+  const sessionId = "sess-orch-01";
+  const nodes: DagNode[] = [
+    makeMockDagNode({
+      nodeId: "orch-root",
+      sessionId,
+      parentNodeId: null,
+      isRoot: true,
+      waveIndex: 0,
+      agentType: "orchestrator",
+      roleLabel: "Orchestrator",
+      model: "Gemini 4 Argon",
+      freshIn: 620_000,
+      cached: 5_480_000,
+      output: 94_000,
+      wallTimeSecs: 1_140,
+      calls: 42,
+      toolCallCount: 24,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w1-1",
+      sessionId: "sub-orch-w1-1",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "implementer",
+      roleLabel: "Implementer — Rust DAG Queries",
+      model: "Gemini 4 Neon",
+      freshIn: 240_000,
+      cached: 2_310_000,
+      output: 36_000,
+      wallTimeSecs: 215,
+      calls: 22,
+      toolCallCount: 18,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w1-2",
+      sessionId: "sub-orch-w1-2",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "implementer",
+      roleLabel: "Implementer — Types & Mock API",
+      model: "Gemini 4 Hydrogen",
+      freshIn: 190_000,
+      cached: 1_840_000,
+      output: 28_500,
+      wallTimeSecs: 165,
+      calls: 16,
+      toolCallCount: 12,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w1-3",
+      sessionId: "sub-orch-w1-3",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "implementer",
+      roleLabel: "Implementer — Formatters & Filters",
+      model: "Gemini 4 Hydrogen",
+      freshIn: 160_000,
+      cached: 1_520_000,
+      output: 22_000,
+      wallTimeSecs: 130,
+      calls: 13,
+      toolCallCount: 9,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w2-1",
+      sessionId: "sub-orch-w2-1",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 2,
+      agentType: "implementer",
+      roleLabel: "Implementer — Sessions Table",
+      model: "Gemini 4 Neon",
+      freshIn: 265_000,
+      cached: 2_480_000,
+      output: 41_000,
+      wallTimeSecs: 245,
+      calls: 25,
+      toolCallCount: 21,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w2-2",
+      sessionId: "sub-orch-w2-2",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 2,
+      agentType: "implementer",
+      roleLabel: "Implementer — Interactive DAG Canvas",
+      model: "Gemini 4 Argon",
+      freshIn: 310_000,
+      cached: 2_890_000,
+      output: 48_500,
+      wallTimeSecs: 310,
+      calls: 31,
+      toolCallCount: 27,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w2-3",
+      sessionId: "sub-orch-w2-3",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 2,
+      agentType: "implementer",
+      roleLabel: "Implementer — Node Inspector",
+      model: "Gemini 4 Neon",
+      freshIn: 215_000,
+      cached: 2_050_000,
+      output: 31_200,
+      wallTimeSecs: 190,
+      calls: 19,
+      toolCallCount: 15,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w3-rev",
+      sessionId: "sub-orch-w3-rev",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 3,
+      agentType: "code-reviewer",
+      roleLabel: "Code Reviewer",
+      model: "Gemini 4 Argon",
+      freshIn: 225_000,
+      cached: 2_120_000,
+      output: 34_800,
+      wallTimeSecs: 175,
+      calls: 18,
+      toolCallCount: 16,
+      messageTurns: 2,
+    }),
+    makeMockDagNode({
+      nodeId: "orch-w4-ver",
+      sessionId: "sub-orch-w4-ver",
+      parentNodeId: "orch-root",
+      isRoot: false,
+      waveIndex: 4,
+      agentType: "verifier",
+      roleLabel: "Verifier",
+      model: "Gemini 4 Hydrogen",
+      freshIn: 145_000,
+      cached: 1_390_000,
+      output: 19_500,
+      wallTimeSecs: 112,
+      calls: 11,
+      toolCallCount: 10,
+      messageTurns: 1,
+    }),
+  ];
+
+  const edges: DagEdge[] = [
+    { fromNodeId: "orch-root", toNodeId: "orch-w1-1", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w1-2", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w1-3", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w2-1", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w2-2", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w2-3", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w3-rev", kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: "orch-w3-rev", toNodeId: "orch-root", kind: "feedback", messageTurns: 2 },
+    { fromNodeId: "orch-root", toNodeId: "orch-w4-ver", kind: "dispatch", messageTurns: 1 },
+  ];
+
+  return {
+    sessionId,
+    title: "Execute Token Usage & Sessions DAG Plan",
+    project: "AntigravityUsageDashboard",
+    role: "orchestrator",
+    waveCount: 4,
+    nodes,
+    edges,
+  };
+}
+
+function buildMainMockGraph(sessionId: string): SessionDagGraph {
+  const nodes: DagNode[] = [
+    makeMockDagNode({
+      nodeId: `${sessionId}-root`,
+      sessionId,
+      parentNodeId: null,
+      isRoot: true,
+      waveIndex: 0,
+      agentType: "main",
+      roleLabel: "Main Agent",
+      model: "Gemini 4 Argon",
+      freshIn: 280_000,
+      cached: 2_420_000,
+      output: 42_000,
+      wallTimeSecs: 380,
+      calls: 24,
+      toolCallCount: 18,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: `${sessionId}-sub-1`,
+      sessionId: `${sessionId}-child-1`,
+      parentNodeId: `${sessionId}-root`,
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "researcher",
+      roleLabel: "Researcher — Audit Pricing",
+      model: "Gemini 4 Hydrogen",
+      freshIn: 130_000,
+      cached: 1_180_000,
+      output: 16_500,
+      wallTimeSecs: 105,
+      calls: 11,
+      toolCallCount: 12,
+      messageTurns: 1,
+    }),
+    makeMockDagNode({
+      nodeId: `${sessionId}-sub-2`,
+      sessionId: `${sessionId}-child-2`,
+      parentNodeId: `${sessionId}-root`,
+      isRoot: false,
+      waveIndex: 1,
+      agentType: "implementer",
+      roleLabel: "Implementer — Patch Parser",
+      model: "Gemini 4 Neon",
+      freshIn: 140_000,
+      cached: 1_020_000,
+      output: 19_000,
+      wallTimeSecs: 128,
+      calls: 14,
+      toolCallCount: 15,
+      messageTurns: 1,
+    }),
+  ];
+
+  const edges: DagEdge[] = [
+    { fromNodeId: `${sessionId}-root`, toNodeId: `${sessionId}-sub-1`, kind: "dispatch", messageTurns: 1 },
+    { fromNodeId: `${sessionId}-root`, toNodeId: `${sessionId}-sub-2`, kind: "dispatch", messageTurns: 1 },
+  ];
+
+  return {
+    sessionId,
+    title: sessionId === "sess-main-02" ? "Refactor Transcript Parser & Pricing" : `Session ${sessionId}`,
+    project: "AntigravityUsageDashboard",
+    role: "main",
+    waveCount: 1,
+    nodes,
+    edges,
+  };
+}
+
+function buildSoloMockGraph(): SessionDagGraph {
+  const sessionId = "sess-solo-03";
+  return {
+    sessionId,
+    title: "Quick CLI Log Rotation Helper",
+    project: "PersonalTools",
+    role: "main",
+    waveCount: 0,
+    nodes: [
+      makeMockDagNode({
+        nodeId: "solo-root",
+        sessionId,
+        parentNodeId: null,
+        isRoot: true,
+        waveIndex: 0,
+        agentType: "main",
+        roleLabel: "Main Agent",
+        model: "Gemini 4 Hydrogen",
+        freshIn: 142_000,
+        cached: 1_210_000,
+        output: 24_800,
+        wallTimeSecs: 195,
+        calls: 14,
+        toolCallCount: 9,
+        messageTurns: 1,
+      }),
+    ],
+    edges: [],
+  };
+}
+
+function periodCutoffMs(period: TimePeriod): number | null {
+  const now = MOCK_NOW.getTime();
+  switch (period) {
+    case "1d":
+      return now - 24 * HOUR_MS;
+    case "1w":
+      return now - 7 * 24 * HOUR_MS;
+    case "1m":
+      return now - 30 * 24 * HOUR_MS;
+    case "6m":
+      return now - 182 * 24 * HOUR_MS;
+    case "lifetime":
+      return null;
+  }
+}
+
+function mockSessionsOverview(filter: SessionsFilter): SessionsOverviewPayload {
+  const planName = "2026-11-22-token-usage-ui-plan.md";
+  const allRows: SessionOverviewRow[] = [
+    summarizeGraphForRow(buildPlannerMockGraph(), {
+      source: { kind: "cli" },
+      firstHoursAgo: 6,
+      lastHoursAgo: 5,
+      linkedSessionId: "sess-orch-01",
+      linkDirection: "toOrchestrator",
+      linkedPlanName: planName,
+    }),
+    summarizeGraphForRow(buildOrchestratorMockGraph(), {
+      source: { kind: "cli" },
+      firstHoursAgo: 4,
+      lastHoursAgo: 2,
+      linkedSessionId: "sess-planner-01",
+      linkDirection: "fromPlanner",
+      linkedPlanName: planName,
+    }),
+    summarizeGraphForRow(buildMainMockGraph("sess-main-02"), {
+      source: { kind: "app" },
+      firstHoursAgo: 12,
+      lastHoursAgo: 11,
+      linkedSessionId: null,
+      linkDirection: null,
+      linkedPlanName: null,
+    }),
+    summarizeGraphForRow(buildSoloMockGraph(), {
+      source: { kind: "cli" },
+      firstHoursAgo: 72,
+      lastHoursAgo: 71,
+      linkedSessionId: null,
+      linkDirection: null,
+      linkedPlanName: null,
+    }),
+  ];
+
+  const availableProjects = Array.from(new Set(allRows.map((row) => row.project)));
+  const cutoff = periodCutoffMs(filter.period);
+  const { windowStart, windowEnd } = mockBuckets(filter.period);
+
+  const sessions = allRows
+    .filter((row) => {
+      if (filter.project !== null && row.project !== filter.project) {
+        return false;
+      }
+      if (cutoff !== null && row.lastUtc !== null) {
+        const ts = Date.parse(row.lastUtc);
+        if (!Number.isNaN(ts) && ts < cutoff) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .sort((left, right) => right.total - left.total);
+
+  return {
+    filter,
+    windowStart,
+    windowEnd,
+    availableProjects,
+    sessions,
+  };
+}
+
+function mockSessionDag(sessionId: string): SessionDagPayload {
+  if (sessionId === "sess-planner-01" || sessionId === "sess-orch-01") {
+    return {
+      selectedSessionId: sessionId,
+      primary: buildPlannerMockGraph(),
+      secondary: buildOrchestratorMockGraph(),
+      link: {
+        plannerSessionId: "sess-planner-01",
+        orchestratorSessionId: "sess-orch-01",
+        planName: "2026-11-22-token-usage-ui-plan.md",
+      },
+    };
+  }
+
+  if (sessionId === "sess-solo-03") {
+    return {
+      selectedSessionId: sessionId,
+      primary: buildSoloMockGraph(),
+      secondary: null,
+      link: null,
+    };
+  }
+
+  return {
+    selectedSessionId: sessionId,
+    primary: buildMainMockGraph(sessionId),
+    secondary: null,
+    link: null,
   };
 }

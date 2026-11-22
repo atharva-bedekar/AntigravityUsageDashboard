@@ -510,3 +510,82 @@ export interface TokenUsagePayload {
   timeSeries: TimeUsageBucket[];
   byModel: ModelUsageRow[];
 }
+
+export type SessionRole = "planner" | "orchestrator" | "main";
+export type SessionLinkDirection = "toOrchestrator" | "fromPlanner";
+export interface SessionsFilter {
+  period: TimePeriod;
+  project: string | null;
+}
+export interface SessionOverviewRow {
+  sessionId: string;
+  title: string;
+  project: string;
+  source: SourceKind;
+  role: SessionRole;
+  subagentCount: number;
+  freshIn: number;
+  cached: number;
+  output: number;
+  total: number;
+  cacheHitRate: number;
+  wallTimeSecs: number;
+  calls: number;
+  firstUtc: string | null;
+  lastUtc: string | null;
+  linkedSessionId: string | null;
+  linkDirection: SessionLinkDirection | null;
+  linkedPlanName: string | null;
+}
+export interface SessionsOverviewPayload {
+  filter: SessionsFilter;
+  windowStart: string | null;
+  windowEnd: string;
+  availableProjects: string[];
+  sessions: SessionOverviewRow[];
+}
+export interface DagNode {
+  nodeId: string;
+  sessionId: string;
+  parentNodeId: string | null;
+  isRoot: boolean;
+  waveIndex: number;
+  agentType: string;
+  roleLabel: string;
+  model: string;
+  freshIn: number;
+  cached: number;
+  output: number;
+  total: number;
+  cacheHitRate: number;
+  wallTimeSecs: number;
+  calls: number;
+  toolCallCount: number;
+  messageTurns: number;
+}
+export interface DagEdge {
+  fromNodeId: string;
+  toNodeId: string;
+  kind: "dispatch" | "feedback";
+  messageTurns: number;
+}
+export interface SessionDagGraph {
+  sessionId: string;
+  title: string;
+  project: string;
+  role: SessionRole;
+  waveCount: number;
+  nodes: DagNode[];
+  edges: DagEdge[];
+}
+export interface CrossSessionLink {
+  plannerSessionId: string;
+  orchestratorSessionId: string;
+  planName: string;
+}
+export interface SessionDagPayload {
+  selectedSessionId: string;
+  primary: SessionDagGraph;
+  secondary: SessionDagGraph | null;
+  link: CrossSessionLink | null;
+}

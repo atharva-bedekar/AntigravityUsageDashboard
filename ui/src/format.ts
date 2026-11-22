@@ -54,6 +54,11 @@ export function formatPercent(pct: number): string {
   return `${Math.round(pct)}%`;
 }
 
+export function formatCacheHitRate(freshIn: number, cached: number, rate: number): string {
+  if (freshIn + cached === 0) return "—";
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
 export function formatDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "Not recorded";
   const parts = isoDate.slice(0, 10).split("-");
