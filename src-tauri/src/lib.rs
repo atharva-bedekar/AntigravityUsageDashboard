@@ -85,10 +85,10 @@ pub mod commands {
         generate_plain_english_summary,
     };
     use crate::forecast::compute_forecast as run_forecast_engine;
-    use crate::metrics::{build_dashboard, build_session_detail};
+    use crate::metrics::{self, build_dashboard, build_session_detail};
     use crate::models::{
         AboutInfo, AppConfig, DashboardPayload, ExportResult, FilterState, ForecastMethod,
-        ForecastResult, ScanDiagnostics, SessionDetailPayload,
+        ForecastResult, ScanDiagnostics, SessionDetailPayload, TokenUsageFilter, TokenUsagePayload,
     };
     use crate::pricing::Catalog;
     use crate::snapshots::clear_snapshots as clear_db_snapshots;
@@ -117,6 +117,16 @@ pub mod commands {
         let catalog = Catalog::load(cfg.pricing_path.as_deref());
         let scan = ensure_scan(&mut guard);
         Ok(build_dashboard(scan, &cfg, &catalog, &filter))
+    }
+
+    #[tauri::command]
+    pub fn get_token_usage(
+        filter: TokenUsageFilter,
+        state: State<'_, AppState>,
+    ) -> Result<TokenUsagePayload, String> {
+        let mut guard = state.0.lock().map_err(|e| format!("State lock error: {e}"))?;
+        let scan = ensure_scan(&mut guard);
+        Ok(metrics::build_token_usage(scan, &filter))
     }
 
     #[tauri::command]
@@ -283,6 +293,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::scan_all,
             commands::get_dashboard,
+            commands::get_token_usage,
             commands::get_session_detail,
             commands::get_settings,
             commands::save_settings,
