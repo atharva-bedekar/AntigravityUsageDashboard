@@ -439,12 +439,9 @@ export interface AboutInfo {
 }
 
 export type ScreenId =
-  | "overview"
   | "token-usage"
   | "sessions"
   | "session-detail"
-  | "projects"
-  | "costs"
   | "data-sources"
   | "settings";
 

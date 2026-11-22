@@ -7,19 +7,17 @@ import {
   AppConfig,
   DashboardPayload,
   FilterState,
-  ForecastMethod,
-  ForecastResult,
   NavHistoryEntry,
   ScreenId,
   SessionDetailPayload,
+  TokenUsageFilter,
+  TokenUsagePayload,
 } from "./types.ts";
 import { escapeHtml, formatRelativeTime, middleTruncate } from "./format.ts";
 import { appLogoSvg, icons, pixelASvg } from "./icons.ts";
-import { renderOverview } from "./screens/overview.ts";
+import { ModelSortState, renderTokenUsage } from "./screens/tokenUsage.ts";
 import { createDefaultSessionsState, renderSessions, SessionsUiState } from "./screens/sessions.ts";
 import { renderSessionDetail } from "./screens/sessionDetail.ts";
-import { ProjectRankBy, renderProjects } from "./screens/projects.ts";
-import { renderCosts } from "./screens/costs.ts";
 import { renderDataSources } from "./screens/dataSources.ts";
 import { renderSettings, SettingsSection } from "./screens/settings.ts";
 import {
@@ -28,6 +26,22 @@ import {
   renderGlossaryDrawer,
   renderQuickSearchModal,
 } from "./modals.ts";
+
+function readShowTimeChart(): boolean {
+  try {
+    return localStorage.getItem("agy_show_time_chart") !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeShowTimeChart(visible: boolean): void {
+  try {
+    localStorage.setItem("agy_show_time_chart", String(visible));
+  } catch {
+    // ignore storage failures
+  }
+}
 
 interface AppState {
   screen: ScreenId;
@@ -50,15 +64,13 @@ interface AppState {
   sessionTab: "steps" | "tools" | "subagents";
   expandedThoughts: Set<number>;
   filter: FilterState;
-  dailyColorBy: "token" | "source";
+  tokenUsageFilter: TokenUsageFilter;
+  tokenUsage: TokenUsagePayload | null;
+  tokenUsageLoading: boolean;
+  tokenUsageError: string | null;
+  modelSort: ModelSortState;
+  showTimeChart: boolean;
   sessionsUi: SessionsUiState;
-  projectRankBy: ProjectRankBy;
-  selectedProject: string | null;
-  waterfallSource: "all" | "cli" | "app";
-  forecast: ForecastResult | null;
-  forecastMethod: ForecastMethod;
-  forecastHorizon: number;
-  forecastMetric: "cost" | "tokens";
   pbExpanded: boolean;
   settingsSection: SettingsSection;
   settingsSearch: string;
@@ -67,9 +79,9 @@ interface AppState {
 }
 
 const state: AppState = {
-  screen: "overview",
+  screen: "token-usage",
   activeSessionId: null,
-  history: [{ screen: "overview" }],
+  history: [{ screen: "token-usage" }],
   historyIdx: 0,
   sidebarCollapsed: false,
   openMenu: null,
@@ -95,15 +107,18 @@ const state: AppState = {
     modelId: "gemini-3.8-flash",
     currency: "INR",
   },
-  dailyColorBy: "token",
+  tokenUsageFilter: {
+    period: "1w",
+    project: null,
+    model: null,
+    agent: { kind: "all" },
+  },
+  tokenUsage: null,
+  tokenUsageLoading: false,
+  tokenUsageError: null,
+  modelSort: { column: "total", direction: "desc" },
+  showTimeChart: readShowTimeChart(),
   sessionsUi: createDefaultSessionsState(),
-  projectRankBy: "cost",
-  selectedProject: null,
-  waterfallSource: "all",
-  forecast: null,
-  forecastMethod: "linear",
-  forecastHorizon: 14,
-  forecastMetric: "cost",
   pbExpanded: false,
   settingsSection: "sources",
   settingsSearch: "",
@@ -113,6 +128,7 @@ const state: AppState = {
 
 let toastSeq = 1;
 let refreshTimer: number | null = null;
+let tokenUsageSeq = 0;
 
 function showToast(text: string): void {
   const id = toastSeq++;
@@ -187,9 +203,6 @@ function navigate(screen: ScreenId, sessionId?: string, pushHistory = true): voi
     state.expandedThoughts.clear();
     void loadSessionDetail(sessionId);
   }
-  if (screen === "costs") {
-    void loadForecast();
-  }
   renderApp();
 }
 
@@ -220,18 +233,24 @@ async function loadSessionDetail(sessionId: string): Promise<void> {
   renderApp();
 }
 
-async function loadForecast(): Promise<void> {
-  try {
-    state.forecast = await api.computeForecast(
-      state.filter,
-      state.forecastMethod,
-      state.forecastHorizon,
-      state.forecastMetric
-    );
-  } catch {
-    state.forecast = null;
+async function refreshTokenUsage(): Promise<void> {
+  const reqId = ++tokenUsageSeq;
+  state.tokenUsageLoading = true;
+  state.tokenUsageError = null;
+  if (state.screen === "token-usage" && !state.initialLoading) {
+    renderBodyOnly();
   }
-  if (state.screen === "costs") {
+  try {
+    const payload = await api.getTokenUsage(state.tokenUsageFilter);
+    if (reqId !== tokenUsageSeq) return;
+    state.tokenUsage = payload;
+    state.tokenUsageLoading = false;
+  } catch (err) {
+    if (reqId !== tokenUsageSeq) return;
+    state.tokenUsageError = String(err);
+    state.tokenUsageLoading = false;
+  }
+  if (state.screen === "token-usage" && !state.initialLoading) {
     renderBodyOnly();
   }
 }
@@ -239,9 +258,6 @@ async function loadForecast(): Promise<void> {
 async function refreshDashboard(): Promise<void> {
   try {
     state.dashboard = await api.getDashboard(state.filter);
-    if (state.screen === "costs") {
-      await loadForecast();
-    }
     if (state.screen === "session-detail" && state.activeSessionId) {
       await loadSessionDetail(state.activeSessionId);
     }
@@ -258,9 +274,7 @@ async function runRescan(): Promise<void> {
   try {
     await api.scanAll();
     state.dashboard = await api.getDashboard(state.filter);
-    if (state.screen === "costs") {
-      await loadForecast();
-    }
+    await refreshTokenUsage();
     showToast("Scan complete");
   } catch (err) {
     showToast(`Scan failed: ${String(err)}`);
@@ -296,6 +310,7 @@ async function init(): Promise<void> {
 
     await api.scanAll();
     state.dashboard = await api.getDashboard(state.filter);
+    await refreshTokenUsage();
   } catch (err) {
     showToast(`Startup error: ${String(err)}`);
   } finally {
@@ -316,10 +331,8 @@ function renderApp(): void {
   const hasWarnings = (diag?.totalParseErrors ?? 0) > 0 || (diag?.warnings.length ?? 0) > 0 || Boolean(missingSource);
 
   const navItems: Array<{ id: ScreenId; label: string; icon: (s?: number) => string }> = [
-    { id: "overview", label: "Overview", icon: icons.overview },
+    { id: "token-usage", label: "Token Usage", icon: icons.overview },
     { id: "sessions", label: "Sessions", icon: icons.sessions },
-    { id: "projects", label: "Projects", icon: icons.projects },
-    { id: "costs", label: "Costs", icon: icons.costs },
     { id: "data-sources", label: "Data Sources", icon: icons.sources },
   ];
 
@@ -340,12 +353,9 @@ function renderApp(): void {
   }
 
   const screenTitleMap: Record<ScreenId, string> = {
-    overview: "Overview",
     "token-usage": "Token Usage",
     sessions: "Sessions",
     "session-detail": state.sessionDetail?.summary.title ?? "Session Detail",
-    projects: "Projects",
-    costs: "Costs",
     "data-sources": "Data Sources",
     settings: "Settings",
   };
@@ -496,7 +506,7 @@ function renderApp(): void {
           </div>
 
           <section class="content-panel">
-            ${state.screen !== "settings" && state.screen !== "data-sources" ? renderFilterBarHtml(dash) : ""}
+            ${state.screen !== "token-usage" && state.screen !== "settings" && state.screen !== "data-sources" ? renderFilterBarHtml(dash) : ""}
             <div class="panel-scroll" id="panel-scroll">
               <div id="screen-host"></div>
             </div>
@@ -505,7 +515,7 @@ function renderApp(): void {
               <span>
                 [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingSource ? " · source missing" : ""} ]
               </span>
-              <span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>
+              ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
             </div>
           </section>
         </main>
@@ -534,10 +544,8 @@ function renderMenuButton(id: "usage" | "view" | "window" | "help", label: strin
     } else if (id === "view") {
       dropdown = `
         <div class="menu-dropdown">
-          <button type="button" class="menu-dropdown-item" data-nav="overview">Overview</button>
+          <button type="button" class="menu-dropdown-item" data-nav="token-usage">Token Usage</button>
           <button type="button" class="menu-dropdown-item" data-nav="sessions">Sessions</button>
-          <button type="button" class="menu-dropdown-item" data-nav="projects">Projects</button>
-          <button type="button" class="menu-dropdown-item" data-nav="costs">Costs</button>
           <button type="button" class="menu-dropdown-item" data-nav="data-sources">Data Sources</button>
           <button type="button" class="menu-dropdown-item" data-nav="settings">Settings</button>
           <div class="menu-dropdown-sep"></div>
@@ -706,18 +714,78 @@ function renderBodyOnly(): void {
     host.appendChild(contentWrap);
   }
 
-  if (state.screen === "overview" && dash) {
-    renderOverview(contentWrap, dash, numFmt, state.dailyColorBy, {
-      onNavigate: (scr, sid) => navigate(scr, sid),
-      onSelectProject: (proj) => {
-        state.selectedProject = proj;
-        navigate("projects");
-      },
-      onColorByChange: (mode) => {
-        state.dailyColorBy = mode;
-        renderBodyOnly();
-      },
-    });
+  if (state.screen === "token-usage") {
+    if (state.tokenUsageLoading && !state.tokenUsage) {
+      contentWrap.setAttribute("aria-busy", "true");
+      contentWrap.innerHTML = `<div class="loader-overlay"><div class="ring-spinner"></div><div>Loading token usage…</div></div>`;
+    } else {
+      if (state.tokenUsageLoading) {
+        contentWrap.setAttribute("aria-busy", "true");
+      }
+      if (state.tokenUsageError) {
+        const errBanner = document.createElement("div");
+        errBanner.className = "tu-error-banner";
+        errBanner.setAttribute("role", "alert");
+        if (state.tokenUsage) {
+          errBanner.style.marginBottom = "var(--card-gap)";
+        }
+        errBanner.innerHTML = `
+          <span>Failed to load token usage: ${escapeHtml(state.tokenUsageError)}</span>
+          <button type="button" class="tu-reset-btn" id="tu-retry-btn">Retry</button>
+        `;
+        errBanner.querySelector("#tu-retry-btn")?.addEventListener("click", () => {
+          void refreshTokenUsage();
+        });
+        contentWrap.appendChild(errBanner);
+      }
+      if (state.tokenUsage) {
+        const tuHost = document.createElement("div");
+        contentWrap.appendChild(tuHost);
+        renderTokenUsage(
+          tuHost,
+          state.tokenUsage,
+          state.modelSort,
+          state.showTimeChart,
+          numFmt,
+          {
+            onFilterChange: (patch) => {
+              state.tokenUsageFilter = { ...state.tokenUsageFilter, ...patch };
+              void refreshTokenUsage();
+            },
+            onResetFilters: () => {
+              state.tokenUsageFilter = {
+                period: "1w",
+                project: null,
+                model: null,
+                agent: { kind: "all" },
+              };
+              void refreshTokenUsage();
+            },
+            onSortChange: (next) => {
+              state.modelSort = next;
+              renderBodyOnly();
+            },
+            onToggleChart: (visible) => {
+              state.showTimeChart = visible;
+              writeShowTimeChart(visible);
+              renderBodyOnly();
+            },
+          }
+        );
+      } else if (!state.tokenUsageError) {
+        const emptyBanner = document.createElement("div");
+        emptyBanner.className = "tu-error-banner";
+        emptyBanner.setAttribute("role", "alert");
+        emptyBanner.innerHTML = `
+          <span>Token usage data is not loaded yet.</span>
+          <button type="button" class="tu-reset-btn" id="tu-retry-btn">Load</button>
+        `;
+        emptyBanner.querySelector("#tu-retry-btn")?.addEventListener("click", () => {
+          void refreshTokenUsage();
+        });
+        contentWrap.appendChild(emptyBanner);
+      }
+    }
   } else if (state.screen === "sessions" && dash) {
     renderSessions(
       contentWrap,
@@ -752,54 +820,6 @@ function renderBodyOnly(): void {
         }
       );
     }
-  } else if (state.screen === "projects" && dash) {
-    renderProjects(
-      contentWrap,
-      dash,
-      state.projectRankBy,
-      state.selectedProject,
-      numFmt,
-      (rank) => {
-        state.projectRankBy = rank;
-        renderBodyOnly();
-      },
-      (proj) => {
-        state.selectedProject = proj;
-        renderBodyOnly();
-      },
-      (sid) => navigate("session-detail", sid)
-    );
-  } else if (state.screen === "costs" && dash) {
-    renderCosts(
-      contentWrap,
-      dash,
-      state.waterfallSource,
-      state.forecast,
-      state.forecastMethod,
-      state.forecastHorizon,
-      state.forecastMetric,
-      numFmt,
-      {
-        onModelChange: (modelId) => {
-          state.filter.modelId = modelId;
-          void refreshDashboard();
-        },
-        onWaterfallSourceChange: (src) => {
-          state.waterfallSource = src;
-          renderBodyOnly();
-        },
-        onOpenSettings: () => {
-          state.settingsSection = "money";
-          navigate("settings");
-        },
-        onForecastParamsChange: (method, horizon, metric) => {
-          state.forecastMethod = method;
-          state.forecastHorizon = horizon;
-          state.forecastMetric = metric;
-          void loadForecast();
-        },
-      }
-    );
   } else if (state.screen === "data-sources" && dash && cfg) {
     renderDataSources(
       contentWrap,
@@ -915,8 +935,9 @@ function renderOverlays(): void {
         },
         (scr, sid) => navigate(scr, sid),
         (proj) => {
-          state.selectedProject = proj;
-          navigate("projects");
+          state.tokenUsageFilter = { ...state.tokenUsageFilter, project: proj };
+          navigate("token-usage");
+          void refreshTokenUsage();
         }
       );
     } else {
@@ -1042,7 +1063,7 @@ function attachShellListeners(): void {
   });
 
   // Left toolbar & sidebar
-  document.getElementById("tb-home")?.addEventListener("click", () => navigate("overview"));
+  document.getElementById("tb-home")?.addEventListener("click", () => navigate("token-usage"));
   document.getElementById("tb-toggle-sidebar")?.addEventListener("click", () => {
     state.sidebarCollapsed = !state.sidebarCollapsed;
     renderApp();
@@ -1083,8 +1104,9 @@ function attachShellListeners(): void {
     el.addEventListener("click", () => {
       const proj = el.dataset.proj;
       if (proj) {
-        state.selectedProject = proj;
-        navigate("projects");
+        state.tokenUsageFilter = { ...state.tokenUsageFilter, project: proj };
+        navigate("token-usage");
+        void refreshTokenUsage();
       }
     });
   });
@@ -1180,9 +1202,6 @@ window.addEventListener("keydown", (e) => {
     } else if (state.glossaryOpen) {
       state.glossaryOpen = false;
       renderOverlays();
-    } else if (state.selectedProject) {
-      state.selectedProject = null;
-      renderBodyOnly();
     } else if (state.openMenu) {
       state.openMenu = null;
       renderApp();

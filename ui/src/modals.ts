@@ -25,10 +25,8 @@ export function renderQuickSearchModal(
   const items: QuickSearchItem[] = [];
 
   const screens: Array<{ id: ScreenId; label: string }> = [
-    { id: "overview", label: "Overview" },
+    { id: "token-usage", label: "Token Usage" },
     { id: "sessions", label: "Sessions" },
-    { id: "projects", label: "Projects" },
-    { id: "costs", label: "Costs" },
     { id: "data-sources", label: "Data Sources" },
     { id: "settings", label: "Settings" },
   ];
