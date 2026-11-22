@@ -49,6 +49,7 @@ export interface StepRecord {
   modelSwitch: ModelSwitchRecord | null;
   commandDurationSecs: number | null;
   commandExitCode: number | null;
+  observedModel?: string;
 }
 
 export interface SourceDiagnostics {
@@ -439,6 +440,7 @@ export interface AboutInfo {
 
 export type ScreenId =
   | "overview"
+  | "token-usage"
   | "sessions"
   | "session-detail"
   | "projects"
@@ -449,4 +451,71 @@ export type ScreenId =
 export interface NavHistoryEntry {
   screen: ScreenId;
   sessionId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Token usage screen (mirrors Rust camelCase serde types)
+// ---------------------------------------------------------------------------
+
+export type TimePeriod = "1d" | "1w" | "1m" | "6m" | "lifetime";
+
+export type TimeGranularity = "hourly" | "daily" | "weekly" | "monthly";
+
+export type AgentFilter =
+  | { kind: "all" }
+  | { kind: "mainOnly" }
+  | { kind: "subagentsOnly" }
+  | { kind: "agentType"; agentType: string };
+
+export interface TokenUsageFilter {
+  period: TimePeriod;
+  project: string | null;
+  model: string | null;
+  agent: AgentFilter;
+}
+
+export interface TokenUsageTotals {
+  freshIn: number;
+  cached: number;
+  output: number;
+  total: number;
+  cacheHitRate: number;
+  wallTimeSecs: number;
+  calls: number;
+  sessions: number;
+}
+
+export interface TimeUsageBucket {
+  key: string;
+  axisLabel: string;
+  rangeLabel: string;
+  freshIn: number;
+  cached: number;
+  output: number;
+  total: number;
+}
+
+export interface ModelUsageRow {
+  model: string;
+  freshIn: number;
+  cached: number;
+  output: number;
+  total: number;
+  cacheHitRate: number;
+  wallTimeSecs: number;
+  calls: number;
+  sessions: number;
+}
+
+export interface TokenUsagePayload {
+  filter: TokenUsageFilter;
+  windowStart: string | null;
+  windowEnd: string;
+  granularity: TimeGranularity;
+  availableProjects: string[];
+  availableModels: string[];
+  availableAgentTypes: string[];
+  totals: TokenUsageTotals;
+  timeSeries: TimeUsageBucket[];
+  byModel: ModelUsageRow[];
 }

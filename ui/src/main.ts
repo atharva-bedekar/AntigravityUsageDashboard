@@ -341,6 +341,7 @@ function renderApp(): void {
 
   const screenTitleMap: Record<ScreenId, string> = {
     overview: "Overview",
+    "token-usage": "Token Usage",
     sessions: "Sessions",
     "session-detail": state.sessionDetail?.summary.title ?? "Session Detail",
     projects: "Projects",

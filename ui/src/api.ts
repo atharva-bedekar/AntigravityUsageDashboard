@@ -7,8 +7,15 @@ import {
   FilterState,
   ForecastMethod,
   ForecastResult,
+  ModelUsageRow,
   ScanDiagnostics,
   SessionDetailPayload,
+  TimeGranularity,
+  TimePeriod,
+  TimeUsageBucket,
+  TokenUsageFilter,
+  TokenUsagePayload,
+  TokenUsageTotals,
 } from "./types.ts";
 
 function isTauri(): boolean {
@@ -28,6 +35,13 @@ export const api = {
       return invoke<DashboardPayload>("get_dashboard", { filter });
     }
     return mockDashboard(filter);
+  },
+
+  async getTokenUsage(filter: TokenUsageFilter): Promise<TokenUsagePayload> {
+    if (isTauri()) {
+      return invoke<TokenUsagePayload>("get_token_usage", { filter });
+    }
+    return mockTokenUsage(filter);
   },
 
   async getSessionDetail(
@@ -814,6 +828,408 @@ function mockSessionDetail(sessionId: string, currency: "INR" | "USD"): SessionD
     subagents: dash.sessions.filter((s) => s.parentId === summary.sessionId),
     modelSwitches: [],
     permissionDenials: 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Token usage mock (browser-only dev fallback)
+// ---------------------------------------------------------------------------
+
+const MOCK_PROJECTS = ["AntigravityUsageDashboard", "core-api", "docs-site"];
+const MOCK_MODELS = ["Gemini 4 Argon", "Claude Sonnet 4", "Gemini 3.8 Flash", "Unrecorded"];
+const MOCK_AGENT_TYPES = ["researcher", "implementer"];
+
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Fixed "now" so browser dev mode renders the same window on every reload.
+const MOCK_NOW = new Date(2026, 10, 22, 17, 0, 0);
+const HOUR_MS = 3_600_000;
+
+type MockAgentKind = "main" | "researcher" | "implementer";
+
+interface MockBucket {
+  key: string;
+  axisLabel: string;
+  rangeLabel: string;
+  startMs: number;
+}
+
+interface MockUsageCell {
+  bucketIndex: number;
+  project: string;
+  model: string;
+  agentKind: MockAgentKind;
+  freshIn: number;
+  cached: number;
+  output: number;
+  calls: number;
+  sessions: number;
+  wallTimeSecs: number;
+}
+
+interface MockAccumulator {
+  freshIn: number;
+  cached: number;
+  output: number;
+  calls: number;
+  sessions: number;
+  wallTimeSecs: number;
+}
+
+const MOCK_BUCKET_BASE: Record<TimeGranularity, number> = {
+  hourly: 390_000,
+  daily: 9_400_000,
+  weekly: 65_000_000,
+  monthly: 285_000_000,
+};
+
+const MOCK_PROJECT_SHARE = [0.62, 0.28, 0.1];
+const MOCK_MODEL_SHARE = [0.46, 0.27, 0.21, 0.06];
+const MOCK_AGENT_SHARE: Array<[MockAgentKind, number]> = [
+  ["main", 0.78],
+  ["researcher", 0.14],
+  ["implementer", 0.08],
+];
+
+const MOCK_HOUR_FACTOR = [
+  0.18, 0.12, 0.09, 0.08, 0.12, 0.22, 0.36, 0.55, 0.78, 1.0, 1.12, 1.18,
+  1.02, 1.08, 1.2, 1.14, 1.0, 0.9, 0.72, 0.6, 0.5, 0.42, 0.32, 0.24,
+];
+
+function pad2(value: number): string {
+  return value.toString().padStart(2, "0");
+}
+
+function shortMonthDay(date: Date): string {
+  return `${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}`;
+}
+
+function shortMonthDayYear(date: Date): string {
+  return `${shortMonthDay(date)}, ${date.getFullYear()}`;
+}
+
+function shortMonthDayHour(date: Date): string {
+  return `${shortMonthDay(date)}, ${pad2(date.getHours())}:00`;
+}
+
+function isoDateKey(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function mockGranularity(period: TimePeriod): TimeGranularity {
+  switch (period) {
+    case "1d":
+      return "hourly";
+    case "1w":
+    case "1m":
+      return "daily";
+    case "6m":
+      return "weekly";
+    case "lifetime":
+      return "monthly";
+  }
+}
+
+function mockBuckets(period: TimePeriod): {
+  buckets: MockBucket[];
+  windowStart: string;
+  windowEnd: string;
+} {
+  if (period === "1d") {
+    const buckets: MockBucket[] = [];
+    for (let index = 0; index < 24; index++) {
+      const start = new Date(
+        MOCK_NOW.getFullYear(),
+        MOCK_NOW.getMonth(),
+        MOCK_NOW.getDate(),
+        MOCK_NOW.getHours() - (23 - index)
+      );
+      const end = new Date(start.getTime() + HOUR_MS);
+      buckets.push({
+        key: `${isoDateKey(start)}T${pad2(start.getHours())}:00`,
+        axisLabel: `${pad2(start.getHours())}:00`,
+        rangeLabel: `${shortMonthDay(start)}, ${pad2(start.getHours())}:00–${pad2(end.getHours())}:00`,
+        startMs: start.getTime(),
+      });
+    }
+    return {
+      buckets,
+      windowStart: shortMonthDayHour(new Date(buckets[0].startMs)),
+      windowEnd: shortMonthDayHour(MOCK_NOW),
+    };
+  }
+
+  if (period === "1w" || period === "1m") {
+    const dayCount = period === "1w" ? 7 : 30;
+    const buckets: MockBucket[] = [];
+    for (let index = 0; index < dayCount; index++) {
+      const day = new Date(
+        MOCK_NOW.getFullYear(),
+        MOCK_NOW.getMonth(),
+        MOCK_NOW.getDate() - (dayCount - 1 - index)
+      );
+      buckets.push({
+        key: isoDateKey(day),
+        axisLabel: shortMonthDay(day),
+        rangeLabel: shortMonthDayYear(day),
+        startMs: day.getTime(),
+      });
+    }
+    return {
+      buckets,
+      windowStart: shortMonthDayYear(new Date(buckets[0].startMs)),
+      windowEnd: shortMonthDayYear(new Date(buckets[buckets.length - 1].startMs)),
+    };
+  }
+
+  if (period === "6m") {
+    const currentWeekMonday = new Date(
+      MOCK_NOW.getFullYear(),
+      MOCK_NOW.getMonth(),
+      MOCK_NOW.getDate() - ((MOCK_NOW.getDay() + 6) % 7)
+    );
+    const buckets: MockBucket[] = [];
+    for (let index = 0; index < 26; index++) {
+      const start = new Date(
+        currentWeekMonday.getFullYear(),
+        currentWeekMonday.getMonth(),
+        currentWeekMonday.getDate() - (25 - index) * 7
+      );
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+      const rangeLabel =
+        start.getMonth() === end.getMonth()
+          ? `${shortMonthDay(start)}–${end.getDate()}, ${end.getFullYear()}`
+          : `${shortMonthDay(start)}–${shortMonthDay(end)}, ${end.getFullYear()}`;
+      buckets.push({
+        key: isoDateKey(start),
+        axisLabel: shortMonthDay(start),
+        rangeLabel,
+        startMs: start.getTime(),
+      });
+    }
+    return {
+      buckets,
+      windowStart: shortMonthDayYear(new Date(buckets[0].startMs)),
+      windowEnd: shortMonthDayYear(MOCK_NOW),
+    };
+  }
+
+  const buckets: MockBucket[] = [];
+  for (let index = 0; index < 6; index++) {
+    const start = new Date(MOCK_NOW.getFullYear(), MOCK_NOW.getMonth() - (5 - index), 1);
+    buckets.push({
+      key: `${start.getFullYear()}-${pad2(start.getMonth() + 1)}`,
+      axisLabel: `${MONTHS_SHORT[start.getMonth()]} '${pad2(start.getFullYear() % 100)}`,
+      rangeLabel: `${MONTHS_SHORT[start.getMonth()]} ${start.getFullYear()}`,
+      startMs: start.getTime(),
+    });
+  }
+  return {
+    buckets,
+    windowStart: shortMonthDayYear(new Date(buckets[0].startMs)),
+    windowEnd: shortMonthDayYear(MOCK_NOW),
+  };
+}
+
+function mockNoise(seed: number): number {
+  const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function mockBucketVolume(
+  granularity: TimeGranularity,
+  bucket: MockBucket,
+  index: number
+): number {
+  const base = MOCK_BUCKET_BASE[granularity];
+  let shape = 0.62 + 0.76 * mockNoise(index * 3.71 + base / 12_500);
+
+  if (granularity === "hourly") {
+    shape *= MOCK_HOUR_FACTOR[new Date(bucket.startMs).getHours()];
+  }
+  if (granularity === "daily") {
+    const weekday = new Date(bucket.startMs).getDay();
+    if (weekday === 0 || weekday === 6) {
+      shape *= 0.45;
+    }
+  }
+  if (granularity === "monthly") {
+    // Later months of the observation window were busier.
+    shape *= 0.82 + index * 0.07;
+  }
+  return base * shape;
+}
+
+function mockUsageCells(buckets: MockBucket[], granularity: TimeGranularity): MockUsageCell[] {
+  const cells: MockUsageCell[] = [];
+
+  buckets.forEach((bucket, bucketIndex) => {
+    const bucketVolume = mockBucketVolume(granularity, bucket, bucketIndex);
+    const parts: Array<{ project: number; model: number; agent: number; weight: number }> = [];
+    let weightSum = 0;
+
+    for (let project = 0; project < MOCK_PROJECTS.length; project++) {
+      for (let model = 0; model < MOCK_MODELS.length; model++) {
+        for (let agent = 0; agent < MOCK_AGENT_SHARE.length; agent++) {
+          const jitter = 0.72 + 0.56 * mockNoise(bucketIndex * 53 + project * 17 + model * 7 + agent * 3 + 1);
+          const weight =
+            MOCK_PROJECT_SHARE[project] * MOCK_MODEL_SHARE[model] * MOCK_AGENT_SHARE[agent][1] * jitter;
+          parts.push({ project, model, agent, weight });
+          weightSum += weight;
+        }
+      }
+    }
+
+    for (const part of parts) {
+      const cellTotal = (bucketVolume * part.weight) / weightSum;
+      const seed = bucketIndex * 97 + part.project * 31 + part.model * 13 + part.agent * 5;
+      const cachedRaw = 0.85 + 0.09 * mockNoise(seed + 2);
+      const freshRaw = 0.09 + 0.05 * mockNoise(seed + 4);
+      const outputRaw = 0.03 + 0.02 * mockNoise(seed + 6);
+      const rawSum = cachedRaw + freshRaw + outputRaw;
+      const freshIn = Math.round((cellTotal * freshRaw) / rawSum);
+      const cached = Math.round((cellTotal * cachedRaw) / rawSum);
+      const output = Math.max(0, Math.round(cellTotal) - freshIn - cached);
+      const calls = cellTotal / 11_500;
+
+      cells.push({
+        bucketIndex,
+        project: MOCK_PROJECTS[part.project],
+        model: MOCK_MODELS[part.model],
+        agentKind: MOCK_AGENT_SHARE[part.agent][0],
+        freshIn,
+        cached,
+        output,
+        calls,
+        sessions: calls / 24,
+        wallTimeSecs: calls * 6.5,
+      });
+    }
+  });
+
+  return cells;
+}
+
+function mockMatchesAgent(
+  agentKind: MockAgentKind,
+  filter: TokenUsageFilter["agent"]
+): boolean {
+  switch (filter.kind) {
+    case "all":
+      return true;
+    case "mainOnly":
+      return agentKind === "main";
+    case "subagentsOnly":
+      return agentKind !== "main";
+    case "agentType":
+      return agentKind === filter.agentType;
+  }
+}
+
+function mockEmptyAccumulator(): MockAccumulator {
+  return { freshIn: 0, cached: 0, output: 0, calls: 0, sessions: 0, wallTimeSecs: 0 };
+}
+
+function mockAccumulate(target: MockAccumulator, cell: MockUsageCell): void {
+  target.freshIn += cell.freshIn;
+  target.cached += cell.cached;
+  target.output += cell.output;
+  target.calls += cell.calls;
+  target.sessions += cell.sessions;
+  target.wallTimeSecs += cell.wallTimeSecs;
+}
+
+function mockRoundedTotals(accumulator: MockAccumulator): TokenUsageTotals {
+  const freshIn = Math.round(accumulator.freshIn);
+  const cached = Math.round(accumulator.cached);
+  const output = Math.round(accumulator.output);
+  const inputTotal = freshIn + cached;
+  return {
+    freshIn,
+    cached,
+    output,
+    total: freshIn + cached + output,
+    cacheHitRate: inputTotal > 0 ? cached / inputTotal : 0,
+    wallTimeSecs: Math.round(accumulator.wallTimeSecs),
+    calls: Math.round(accumulator.calls),
+    sessions: Math.round(accumulator.sessions),
+  };
+}
+
+function mockTokenUsage(filter: TokenUsageFilter): TokenUsagePayload {
+  const granularity = mockGranularity(filter.period);
+  const { buckets, windowStart, windowEnd } = mockBuckets(filter.period);
+  const cells = mockUsageCells(buckets, granularity).filter(
+    (cell) =>
+      (filter.project === null || cell.project === filter.project) &&
+      mockMatchesAgent(cell.agentKind, filter.agent)
+  );
+
+  // Totals and the time series honour all four filters, including the model.
+  const totalsAccumulator = mockEmptyAccumulator();
+  const bucketAccumulators = buckets.map(() => mockEmptyAccumulator());
+  for (const cell of cells) {
+    if (filter.model !== null && cell.model !== filter.model) {
+      continue;
+    }
+    mockAccumulate(totalsAccumulator, cell);
+    mockAccumulate(bucketAccumulators[cell.bucketIndex], cell);
+  }
+
+  const timeSeries: TimeUsageBucket[] = buckets.map((bucket, index) => {
+    const accumulator = bucketAccumulators[index];
+    const freshIn = Math.round(accumulator.freshIn);
+    const cached = Math.round(accumulator.cached);
+    const output = Math.round(accumulator.output);
+    return {
+      key: bucket.key,
+      axisLabel: bucket.axisLabel,
+      rangeLabel: bucket.rangeLabel,
+      freshIn,
+      cached,
+      output,
+      total: freshIn + cached + output,
+    };
+  });
+
+  // The by-model table deliberately ignores filter.model so selecting a row
+  // highlights it instead of collapsing the table to a single entry.
+  const modelAccumulators = new Map<string, MockAccumulator>();
+  for (const cell of cells) {
+    const accumulator = modelAccumulators.get(cell.model) ?? mockEmptyAccumulator();
+    mockAccumulate(accumulator, cell);
+    modelAccumulators.set(cell.model, accumulator);
+  }
+
+  const byModel: ModelUsageRow[] = Array.from(modelAccumulators, ([model, accumulator]) => {
+    const totals = mockRoundedTotals(accumulator);
+    return {
+      model,
+      freshIn: totals.freshIn,
+      cached: totals.cached,
+      output: totals.output,
+      total: totals.total,
+      cacheHitRate: totals.cacheHitRate,
+      wallTimeSecs: totals.wallTimeSecs,
+      calls: totals.calls,
+      sessions: totals.sessions,
+    };
+  }).sort((left, right) => right.total - left.total);
+
+  return {
+    filter,
+    windowStart,
+    windowEnd,
+    granularity,
+    availableProjects: [...MOCK_PROJECTS],
+    availableModels: [...MOCK_MODELS],
+    availableAgentTypes: [...MOCK_AGENT_TYPES],
+    totals: mockRoundedTotals(totalsAccumulator),
+    timeSeries,
+    byModel,
   };
 }
 
