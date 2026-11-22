@@ -9,16 +9,12 @@ import {
   FilterState,
   NavHistoryEntry,
   ScreenId,
-  SessionDetailPayload,
   TokenUsageFilter,
   TokenUsagePayload,
 } from "./types.ts";
-import { escapeHtml, formatRelativeTime, middleTruncate } from "./format.ts";
-import { appLogoSvg, icons, pixelASvg } from "./icons.ts";
+import { escapeHtml } from "./format.ts";
+import { appLogoSvg, icons } from "./icons.ts";
 import { ModelSortState, renderTokenUsage } from "./screens/tokenUsage.ts";
-import { createDefaultSessionsState, renderSessions, SessionsUiState } from "./screens/sessions.ts";
-import { renderSessionDetail } from "./screens/sessionDetail.ts";
-import { renderDataSources } from "./screens/dataSources.ts";
 import { renderSettings, SettingsSection } from "./screens/settings.ts";
 import {
   renderFirstRunEmpty,
@@ -45,11 +41,9 @@ function writeShowTimeChart(visible: boolean): void {
 
 interface AppState {
   screen: ScreenId;
-  activeSessionId: string | null;
   history: NavHistoryEntry[];
   historyIdx: number;
-  sidebarCollapsed: boolean;
-  openMenu: "usage" | "view" | "window" | "help" | "more" | null;
+  openMenu: "usage" | "view" | "help" | null;
   glossaryOpen: boolean;
   glossaryHighlight: string | null;
   quickSearchOpen: boolean;
@@ -60,9 +54,6 @@ interface AppState {
   config: AppConfig | null;
   about: AboutInfo | null;
   dashboard: DashboardPayload | null;
-  sessionDetail: SessionDetailPayload | null;
-  sessionTab: "steps" | "tools" | "subagents";
-  expandedThoughts: Set<number>;
   filter: FilterState;
   tokenUsageFilter: TokenUsageFilter;
   tokenUsage: TokenUsagePayload | null;
@@ -70,8 +61,6 @@ interface AppState {
   tokenUsageError: string | null;
   modelSort: ModelSortState;
   showTimeChart: boolean;
-  sessionsUi: SessionsUiState;
-  pbExpanded: boolean;
   settingsSection: SettingsSection;
   settingsSearch: string;
   fxError: string | null;
@@ -80,10 +69,8 @@ interface AppState {
 
 const state: AppState = {
   screen: "token-usage",
-  activeSessionId: null,
   history: [{ screen: "token-usage" }],
   historyIdx: 0,
-  sidebarCollapsed: false,
   openMenu: null,
   glossaryOpen: false,
   glossaryHighlight: null,
@@ -95,9 +82,6 @@ const state: AppState = {
   config: null,
   about: null,
   dashboard: null,
-  sessionDetail: null,
-  sessionTab: "steps",
-  expandedThoughts: new Set(),
   filter: {
     datePreset: "all",
     customStart: null,
@@ -118,9 +102,7 @@ const state: AppState = {
   tokenUsageError: null,
   modelSort: { column: "total", direction: "desc" },
   showTimeChart: readShowTimeChart(),
-  sessionsUi: createDefaultSessionsState(),
-  pbExpanded: false,
-  settingsSection: "sources",
+  settingsSection: "pricing",
   settingsSearch: "",
   fxError: null,
   toasts: [],
@@ -222,74 +204,28 @@ function applyDisplayPreferences(cfg: AppConfig): void {
   root.setAttribute("data-reduced-motion", cfg.display.reducedMotion);
 }
 
-function isFilterNonDefault(): boolean {
-  if (!state.config) return false;
-  return (
-    state.filter.datePreset !== "all" ||
-    state.filter.sourceFilter !== "all" ||
-    state.filter.projectFilter !== null ||
-    state.filter.modelId !== state.config.defaultModelId ||
-    state.filter.currency !== state.config.reportingCurrency
-  );
-}
-
-function resetFilters(): void {
-  if (!state.config) return;
-  state.filter = {
-    datePreset: "all",
-    customStart: null,
-    customEnd: null,
-    sourceFilter: "all",
-    projectFilter: null,
-    modelId: state.config.defaultModelId,
-    currency: state.config.reportingCurrency,
-  };
-  void refreshDashboard();
-}
-
-function navigate(screen: ScreenId, sessionId?: string, pushHistory = true): void {
+function navigate(screen: ScreenId, pushHistory = true): void {
   state.screen = screen;
-  state.activeSessionId = sessionId ?? null;
   state.openMenu = null;
   pendingTokenUsageFocus = null;
   if (pushHistory) {
     state.history = state.history.slice(0, state.historyIdx + 1);
-    state.history.push({ screen, sessionId });
+    state.history.push({ screen });
     state.historyIdx = state.history.length - 1;
-  }
-  if (screen === "session-detail" && sessionId) {
-    state.sessionDetail = null;
-    state.expandedThoughts.clear();
-    void loadSessionDetail(sessionId);
   }
   renderApp();
 }
 
 function goBack(): void {
-  if (state.historyIdx <= 0) return;
+  if (state.historyIdx <= 0) {
+    if (state.screen !== "token-usage") {
+      navigate("token-usage");
+    }
+    return;
+  }
   state.historyIdx -= 1;
   const entry = state.history[state.historyIdx];
-  navigate(entry.screen, entry.sessionId, false);
-}
-
-function goForward(): void {
-  if (state.historyIdx >= state.history.length - 1) return;
-  state.historyIdx += 1;
-  const entry = state.history[state.historyIdx];
-  navigate(entry.screen, entry.sessionId, false);
-}
-
-async function loadSessionDetail(sessionId: string): Promise<void> {
-  try {
-    state.sessionDetail = await api.getSessionDetail(
-      sessionId,
-      state.filter.modelId,
-      state.filter.currency
-    );
-  } catch (err) {
-    showToast(`Failed to load session: ${String(err)}`);
-  }
-  renderApp();
+  navigate(entry.screen, false);
 }
 
 async function refreshTokenUsage(): Promise<void> {
@@ -324,9 +260,6 @@ async function refreshTokenUsage(): Promise<void> {
 async function refreshDashboard(): Promise<void> {
   try {
     state.dashboard = await api.getDashboard(state.filter);
-    if (state.screen === "session-detail" && state.activeSessionId) {
-      await loadSessionDetail(state.activeSessionId);
-    }
   } catch (err) {
     showToast(`Failed to load dashboard: ${String(err)}`);
   }
@@ -393,199 +326,85 @@ function renderApp(): void {
   const diag = dash?.diagnostics;
   const appSrc = diag?.sources.find((s) => s.source.kind === "app");
   const cliSrc = diag?.sources.find((s) => s.source.kind === "cli");
-  const missingSource = (appSrc && !appSrc.exists) || (cliSrc && !cliSrc.exists);
-  const hasWarnings = (diag?.totalParseErrors ?? 0) > 0 || (diag?.warnings.length ?? 0) > 0 || Boolean(missingSource);
-
-  const navItems: Array<{ id: ScreenId; label: string; icon: (s?: number) => string }> = [
-    { id: "token-usage", label: "Token Usage", icon: icons.overview },
-    { id: "sessions", label: "Sessions", icon: icons.sessions },
-    { id: "data-sources", label: "Data Sources", icon: icons.sources },
-  ];
-
-  // Group recent sessions by project (max 3 projects, max 3 sessions each)
-  const recentGroups = new Map<string, typeof dash extends null ? never : NonNullable<typeof dash>["sessions"]>();
-  if (dash) {
-    const sortedRecent = [...dash.sessions]
-      .filter((s) => s.kind !== "subagent")
-      .sort((a, b) => (b.lastUtc ?? "").localeCompare(a.lastUtc ?? ""));
-    for (const s of sortedRecent) {
-      const list = recentGroups.get(s.project) ?? [];
-      if (list.length < 3) {
-        list.push(s);
-        recentGroups.set(s.project, list);
-      }
-      if (recentGroups.size >= 4 && !recentGroups.has(s.project)) break;
-    }
-  }
-
-  const screenTitleMap: Record<ScreenId, string> = {
-    "token-usage": "Token Usage",
-    sessions: "Sessions",
-    "session-detail": state.sessionDetail?.summary.title ?? "Session Detail",
-    "data-sources": "Data Sources",
-    settings: "Settings",
-  };
+  const missingFolder = (appSrc && !appSrc.exists) || (cliSrc && !cliSrc.exists);
+  const hasWarnings =
+    (diag?.totalParseErrors ?? 0) > 0 ||
+    (diag?.warnings.length ?? 0) > 0 ||
+    Boolean(missingFolder);
 
   root.innerHTML = `
     <div class="app-shell">
       <header class="menu-bar" data-tauri-drag-region>
         <div class="menu-bar-left" data-tauri-drag-region>
-          <span class="menu-app-title" data-tauri-drag-region>${appLogoSvg(15)}<span>Antigravity Usage</span></span>
+          <button type="button" class="menu-home-btn" id="tb-home" title="Token Usage">
+            ${appLogoSvg(15)}
+            <span class="menu-app-label">Antigravity Usage</span>
+          </button>
           ${renderMenuButton("usage", "Usage")}
           ${renderMenuButton("view", "View")}
-          ${renderMenuButton("window", "Window")}
           ${renderMenuButton("help", "Help")}
         </div>
-        <div class="window-controls">
-          <button type="button" class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-          </button>
-          <button type="button" class="win-btn" id="win-max" title="Maximize" aria-label="Maximize">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
-          </button>
-          <button type="button" class="win-btn win-btn-close" id="win-close" title="Close" aria-label="Close">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
-          </button>
+        <div class="menu-bar-right">
+          <div class="top-bar-actions">
+            <button
+              type="button"
+              class="top-bar-btn"
+              id="tb-rescan"
+              title="${state.scanning ? "Scanning local logs…" : `Rescan logs${diag?.scannedAtLocalHm ? ` (last scan ${escapeHtml(diag.scannedAtLocalHm)})` : ""}`}"
+              ${state.scanning ? "disabled" : ""}
+            >
+              ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(14)}
+              <span class="tb-rescan-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
+              ${diag?.scannedAtLocalHm ? `<span class="tb-rescan-time mono">${escapeHtml(diag.scannedAtLocalHm)}</span>` : ""}
+            </button>
+            <button
+              type="button"
+              class="top-bar-btn top-bar-icon-btn"
+              id="tb-search"
+              title="Quick search (Ctrl+K)"
+              aria-label="Quick search (Ctrl+K)"
+            >
+              ${icons.search(14)}
+            </button>
+            <button
+              type="button"
+              class="top-bar-btn top-bar-icon-btn ${state.screen === "settings" ? "active" : ""}"
+              id="tb-settings"
+              title="Settings"
+              aria-label="Settings"
+              aria-pressed="${state.screen === "settings" ? "true" : "false"}"
+            >
+              ${icons.settings(14)}
+            </button>
+          </div>
+          <div class="window-controls">
+            <button type="button" class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="win-btn" id="win-max" title="Maximize" aria-label="Maximize">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+            <button type="button" class="win-btn win-btn-close" id="win-close" title="Close" aria-label="Close">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+            </button>
+          </div>
         </div>
       </header>
 
-      <div class="app-body">
-        <aside class="sidebar-col ${state.sidebarCollapsed ? "collapsed" : ""}">
-          <div class="left-toolbar">
-            <div class="toolbar-brand" id="tb-home" title="Antigravity Usage">
-              ${appLogoSvg(20)}
-            </div>
-            <div class="toolbar-actions">
-              <button type="button" class="icon-btn" id="tb-toggle-sidebar" title="Toggle sidebar">${icons.sidebar(17)}</button>
-              <button type="button" class="icon-btn nav-hist-btn" id="tb-back" title="Back" ${state.historyIdx <= 0 ? "disabled" : ""}>${icons.back(16)}</button>
-              <button type="button" class="icon-btn nav-hist-btn" id="tb-forward" title="Forward" ${state.historyIdx >= state.history.length - 1 ? "disabled" : ""}>${icons.forward(16)}</button>
-              <button type="button" class="icon-btn toolbar-search-btn" id="tb-search" title="Quick search (Ctrl+K)">${icons.search(16)}</button>
-            </div>
+      <main class="workspace-main">
+        <section class="content-panel">
+          <div class="panel-scroll" id="panel-scroll">
+            <div id="screen-host" class="workspace-container"></div>
           </div>
-
-          <div class="sidebar-inner">
-            <button type="button" class="rescan-btn" id="sb-rescan">
-              <span class="rescan-btn-left">
-                ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(15)}
-                <span class="rescan-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
-              </span>
-              <span class="rescan-time">${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")}</span>
-            </button>
-
-            <nav class="sidebar-nav" aria-label="Primary navigation">
-              ${navItems
-                .map(
-                  (it) => `
-                <button type="button" class="nav-row ${state.screen === it.id ? "active" : ""}" data-nav="${it.id}" title="${it.label}">
-                  ${it.icon(17)}
-                  <span class="nav-row-label">${it.label}</span>
-                </button>`
-                )
-                .join("")}
-            </nav>
-
-            <div class="sidebar-section-header">
-              <span>Sources</span>
-              <span style="color:var(--text-muted)">${icons.filter(12)}</span>
-            </div>
-            <div class="sidebar-sources">
-              <div class="sidebar-source-row ${appSrc && !appSrc.exists ? "missing" : ""}" data-src-filter="app">
-                <span class="sidebar-source-left">
-                  ${appLogoSvg(13)}
-                  <span>Antigravity App</span>
-                </span>
-                <span class="sidebar-source-count">
-                  ${appSrc && (!appSrc.exists || appSrc.parseErrors > 0) ? `<span class="status-dot status-dot-warn" title="Source warning or missing"></span>` : ""}
-                  <span>${appSrc?.sessionsWithTokens ?? 0}</span>
-                </span>
-              </div>
-              <div class="sidebar-source-row ${cliSrc && !cliSrc.exists ? "missing" : ""}" data-src-filter="cli">
-                <span class="sidebar-source-left">
-                  ${pixelASvg(13)}
-                  <span>Antigravity CLI</span>
-                </span>
-                <span class="sidebar-source-count">
-                  ${cliSrc && (!cliSrc.exists || cliSrc.parseErrors > 0) ? `<span class="status-dot status-dot-warn" title="Source warning or missing"></span>` : ""}
-                  <span>${cliSrc?.sessionsWithTokens ?? 0}</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="sidebar-section-header">
-              <span>Recent sessions</span>
-            </div>
-            <div class="sidebar-recent-wrap">
-              ${Array.from(recentGroups.entries())
-                .map(
-                  ([proj, list]) => `
-                <div class="sidebar-project-group">
-                  <div class="sidebar-project-title" data-proj="${escapeHtml(proj)}">
-                    ${icons.folder(13)}
-                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(proj)}</span>
-                  </div>
-                  ${list
-                    .map(
-                      (s) => `
-                    <button type="button" class="sidebar-session-item ${state.screen === "session-detail" && state.activeSessionId === s.sessionId ? "active" : ""}" data-session="${escapeHtml(s.sessionId)}">
-                      <span class="sidebar-session-title">${escapeHtml(s.title)}</span>
-                      <span class="sidebar-session-age mono">${escapeHtml(formatRelativeTime(s.lastUtc))}</span>
-                    </button>`
-                    )
-                    .join("")}
-                </div>`
-                )
-                .join("")}
-            </div>
-
-            <div class="sidebar-footer">
-              <button type="button" class="nav-row ${state.screen === "settings" ? "active" : ""}" data-nav="settings" title="Settings">
-                ${icons.settings(17)}
-                <span class="nav-row-label">Settings</span>
-              </button>
-            </div>
+          <button type="button" class="scroll-down-fab" id="scroll-down-fab" title="Scroll down" style="display:none">${icons.arrowDown(15)}</button>
+          <div class="status-line ${hasWarnings ? "has-warnings" : ""}" id="status-line">
+            <span>
+              [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingFolder ? " · log folder missing" : ""} ]
+            </span>
+            ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
           </div>
-        </aside>
-
-        <main class="main-col">
-          <div class="breadcrumb-bar">
-            <div class="breadcrumb-trail">
-              ${
-                state.screen === "session-detail"
-                  ? `<button type="button" class="breadcrumb-link" id="bc-sessions">Sessions</button>
-                     <span class="breadcrumb-sep">/</span>
-                     <span class="breadcrumb-current">${escapeHtml(screenTitleMap[state.screen])}</span>`
-                  : `<span class="breadcrumb-current">${escapeHtml(screenTitleMap[state.screen])}</span>`
-              }
-            </div>
-            <div class="breadcrumb-actions">
-              <button type="button" class="icon-btn" id="bc-more-btn" title="More actions">${icons.moreVert(17)}</button>
-              ${
-                state.openMenu === "more"
-                  ? `<div class="menu-dropdown" style="right:36px;left:auto">
-                      <button type="button" class="menu-dropdown-item" id="act-export-csv">Export current view to CSV</button>
-                      <button type="button" class="menu-dropdown-item" id="act-copy-summary">Copy plain-English summary</button>
-                    </div>`
-                  : ""
-              }
-              <button type="button" class="icon-btn" id="bc-glossary-btn" title="Glossary & metric definitions">${icons.panelRight(17)}</button>
-            </div>
-          </div>
-
-          <section class="content-panel">
-            ${state.screen !== "token-usage" && state.screen !== "settings" && state.screen !== "data-sources" ? renderFilterBarHtml(dash) : ""}
-            <div class="panel-scroll" id="panel-scroll">
-              <div id="screen-host"></div>
-            </div>
-            <button type="button" class="scroll-down-fab" id="scroll-down-fab" title="Scroll down" style="display:none">${icons.arrowDown(15)}</button>
-            <div class="status-line ${hasWarnings ? "has-warnings" : ""}" id="status-line" title="Click to inspect Data Sources">
-              <span>
-                [ last scan ${escapeHtml(diag?.scannedAtLocalHm ?? "--:--")} · ${diag?.totalTranscripts ?? 0} files · ${diag?.totalWithTokens ?? 0} with tokens · ${diag?.totalParseErrors ?? 0} warnings${missingSource ? " · source missing" : ""} ]
-              </span>
-              ${state.screen === "token-usage" ? "" : `<span>${state.filter.currency} · ${escapeHtml(dash?.activeModel.name ?? state.filter.modelId)}</span>`}
-            </div>
-          </section>
-        </main>
-      </div>
+        </section>
+      </main>
     </div>
     <div id="modal-host"></div>
     <div id="drawer-host"></div>
@@ -596,7 +415,7 @@ function renderApp(): void {
   renderOverlays();
 }
 
-function renderMenuButton(id: "usage" | "view" | "window" | "help", label: string): string {
+function renderMenuButton(id: "usage" | "view" | "help", label: string): string {
   const open = state.openMenu === id;
   let dropdown = "";
   if (open) {
@@ -611,19 +430,9 @@ function renderMenuButton(id: "usage" | "view" | "window" | "help", label: strin
       dropdown = `
         <div class="menu-dropdown">
           <button type="button" class="menu-dropdown-item" data-nav="token-usage">Token Usage</button>
-          <button type="button" class="menu-dropdown-item" data-nav="sessions">Sessions</button>
-          <button type="button" class="menu-dropdown-item" data-nav="data-sources">Data Sources</button>
           <button type="button" class="menu-dropdown-item" data-nav="settings">Settings</button>
           <div class="menu-dropdown-sep"></div>
-          <button type="button" class="menu-dropdown-item" id="m-toggle-sb">Toggle sidebar</button>
           <button type="button" class="menu-dropdown-item" id="m-toggle-theme">Toggle Light / Dark theme</button>
-        </div>`;
-    } else if (id === "window") {
-      dropdown = `
-        <div class="menu-dropdown">
-          <button type="button" class="menu-dropdown-item" id="m-back">Back</button>
-          <button type="button" class="menu-dropdown-item" id="m-fwd">Forward</button>
-          <button type="button" class="menu-dropdown-item" id="m-search"><span>Quick search</span><span class="menu-shortcut">Ctrl+K</span></button>
         </div>`;
     } else if (id === "help") {
       dropdown = `
@@ -637,92 +446,6 @@ function renderMenuButton(id: "usage" | "view" | "window" | "help", label: strin
     <div class="menu-item-wrap">
       <button type="button" class="menu-trigger ${open ? "open" : ""}" data-menu="${id}">${label}</button>
       ${dropdown}
-    </div>
-  `;
-}
-
-function renderFilterBarHtml(dash: DashboardPayload | null): string {
-  const models = dash?.catalog ?? [];
-  const projects = dash?.allProjects ?? [];
-  const cliCount = dash?.diagnostics.sources.find((s) => s.source.kind === "cli")?.sessionsWithTokens ?? 0;
-  const appCount = dash?.diagnostics.sources.find((s) => s.source.kind === "app")?.sessionsWithTokens ?? 0;
-  const allCount = cliCount + appCount;
-
-  return `
-    <div class="filter-bar-wrap">
-      <div class="composer-filter-bar">
-        <div class="filter-controls-left">
-          <div class="filter-select-wrap">
-            <select id="f-date" class="filter-select" aria-label="Date range">
-              <option value="all" ${state.filter.datePreset === "all" ? "selected" : ""}>All time</option>
-              <option value="today" ${state.filter.datePreset === "today" ? "selected" : ""}>Today</option>
-              <option value="7d" ${state.filter.datePreset === "7d" ? "selected" : ""}>Last 7 days</option>
-              <option value="30d" ${state.filter.datePreset === "30d" ? "selected" : ""}>Last 30 days</option>
-              <option value="custom" ${state.filter.datePreset === "custom" ? "selected" : ""}>Custom range…</option>
-            </select>
-            <span class="filter-select-chevron">${icons.chevronDown(12)}</span>
-          </div>
-
-          ${
-            state.filter.datePreset === "custom"
-              ? `<div class="custom-date-inputs">
-                  <input type="date" id="f-start" value="${escapeHtml(state.filter.customStart ?? "")}" />
-                  <span>–</span>
-                  <input type="date" id="f-end" value="${escapeHtml(state.filter.customEnd ?? "")}" />
-                </div>`
-              : ""
-          }
-
-          <div class="filter-divider"></div>
-
-          <div class="source-segmented" role="group" aria-label="Source filter">
-            <button type="button" class="source-seg-btn ${state.filter.sourceFilter === "all" ? "active" : ""}" data-src="all">All (${allCount})</button>
-            <button type="button" class="source-seg-btn ${state.filter.sourceFilter === "app" ? "active" : ""}" data-src="app">APP ${appCount}</button>
-            <button type="button" class="source-seg-btn ${state.filter.sourceFilter === "cli" ? "active" : ""}" data-src="cli">CLI ${cliCount}</button>
-          </div>
-
-          <div class="filter-divider"></div>
-
-          <div class="filter-select-wrap">
-            <select id="f-project" class="filter-select" aria-label="Project filter">
-              <option value="" ${!state.filter.projectFilter ? "selected" : ""}>All projects</option>
-              ${projects
-                .map(
-                  (p) => `<option value="${escapeHtml(p)}" ${state.filter.projectFilter === p ? "selected" : ""}>${escapeHtml(middleTruncate(p, 26))}</option>`
-                )
-                .join("")}
-            </select>
-            <span class="filter-select-chevron">${icons.chevronDown(12)}</span>
-          </div>
-
-          <div class="filter-divider"></div>
-
-          <div class="filter-select-wrap">
-            <select id="f-model" class="filter-select" aria-label="Pricing model">
-              ${models
-                .map(
-                  (m) => `<option value="${escapeHtml(m.modelId)}" ${state.filter.modelId === m.modelId ? "selected" : ""}>≈ ${escapeHtml(m.name)} pricing</option>`
-                )
-                .join("")}
-            </select>
-            <span class="filter-select-chevron">${icons.chevronDown(12)}</span>
-          </div>
-
-          <div class="filter-select-wrap">
-            <select id="f-currency" class="filter-select" aria-label="Currency">
-              <option value="INR" ${state.filter.currency === "INR" ? "selected" : ""}>₹ INR</option>
-              <option value="USD" ${state.filter.currency === "USD" ? "selected" : ""}>$ USD</option>
-            </select>
-            <span class="filter-select-chevron">${icons.chevronDown(12)}</span>
-          </div>
-        </div>
-
-        ${
-          isFilterNonDefault()
-            ? `<button type="button" class="filter-reset-btn" id="f-reset" title="Reset filters">${icons.refresh(13)}</button>`
-            : ""
-        }
-      </div>
     </div>
   `;
 }
@@ -744,28 +467,21 @@ function renderBodyOnly(): void {
   if (
     dash &&
     dash.diagnostics.sources.every((s) => !s.exists) &&
-    state.screen !== "settings" &&
-    state.screen !== "data-sources"
+    state.screen !== "settings"
   ) {
-    renderFirstRunEmpty(
-      host,
-      cfg?.appBrainRoot ?? "~/.gemini/antigravity/brain",
-      cfg?.cliBrainRoot ?? "~/.gemini/antigravity-cli/brain",
-      () => navigate("settings")
-    );
+    renderFirstRunEmpty(host, () => void runRescan());
     return;
   }
 
   // Parse warning banner
   let warningHtml = "";
-  if (dash && dash.diagnostics.totalParseErrors > 0 && state.screen !== "data-sources") {
+  if (dash && dash.diagnostics.totalParseErrors > 0) {
     warningHtml = `
       <div class="warning-banner">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="color:var(--status-warn-icon)">${icons.warning(16)}</span>
-          <span>${dash.diagnostics.totalParseErrors} session log lines couldn't be parsed.</span>
+          <span>${dash.diagnostics.totalParseErrors} transcript log lines couldn't be parsed.</span>
         </div>
-        <button type="button" class="link-btn" id="banner-goto-ds">See Data Sources</button>
       </div>
     `;
   }
@@ -784,7 +500,6 @@ function renderBodyOnly(): void {
   if (warningHtml) {
     host.innerHTML = warningHtml;
     host.appendChild(contentWrap);
-    host.querySelector("#banner-goto-ds")?.addEventListener("click", () => navigate("data-sources"));
   } else {
     host.innerHTML = "";
     host.appendChild(contentWrap);
@@ -866,69 +581,6 @@ function renderBodyOnly(): void {
         pendingTokenUsageFocus = null;
       }
     }
-  } else if (state.screen === "sessions" && dash) {
-    renderSessions(
-      contentWrap,
-      dash,
-      state.sessionsUi,
-      numFmt,
-      (sid) => navigate("session-detail", sid),
-      () => renderBodyOnly()
-    );
-  } else if (state.screen === "session-detail") {
-    if (!state.sessionDetail) {
-      contentWrap.innerHTML = `<div class="loader-overlay"><div class="ring-spinner"></div><div>Loading session…</div></div>`;
-    } else {
-      renderSessionDetail(
-        contentWrap,
-        state.sessionDetail,
-        state.filter.currency,
-        numFmt,
-        state.sessionTab,
-        state.expandedThoughts,
-        {
-          onOpenSession: (sid) => navigate("session-detail", sid),
-          onOpenFolder: (p) => void api.openInExplorer(p),
-          onCopyText: (txt, lbl) => {
-            void navigator.clipboard?.writeText(txt);
-            showToast(lbl);
-          },
-          onTabChange: (tab) => {
-            state.sessionTab = tab;
-            renderBodyOnly();
-          },
-        }
-      );
-    }
-  } else if (state.screen === "data-sources" && dash && cfg) {
-    renderDataSources(
-      contentWrap,
-      dash,
-      cfg,
-      state.scanning,
-      state.pbExpanded,
-      numFmt,
-      () => {
-        state.pbExpanded = !state.pbExpanded;
-        renderBodyOnly();
-      },
-      {
-        onToggleSource: async (kind, enabled) => {
-          const next = structuredClone(cfg);
-          if (kind === "app") next.appEnabled = enabled;
-          else next.cliEnabled = enabled;
-          state.config = await api.saveSettings(next);
-          showToast("Saved");
-          await runRescan();
-        },
-        onRescan: () => void runRescan(),
-        onOpenFolder: (p) => void api.openInExplorer(p),
-        onOpenSettingsSources: () => {
-          state.settingsSection = "sources";
-          navigate("settings");
-        },
-      }
-    );
   } else if (state.screen === "settings" && cfg) {
     renderSettings(
       contentWrap,
@@ -960,12 +612,6 @@ function renderBodyOnly(): void {
           setupAutoRefresh(saved);
           showToast("Saved");
           await refreshDashboard();
-        },
-        onRestoreDefaults: async () => {
-          const saved = await api.restoreDefaultPaths();
-          state.config = saved;
-          showToast("Restored default paths");
-          await runRescan();
         },
         onClearSnapshots: async () => {
           const count = await api.clearSnapshots();
@@ -1013,7 +659,7 @@ function renderOverlays(): void {
           state.quickSearchOpen = false;
           renderOverlays();
         },
-        (scr, sid) => navigate(scr, sid),
+        (scr) => navigate(scr),
         (proj) => {
           state.tokenUsageFilter = { ...state.tokenUsageFilter, project: proj };
           navigate("token-usage");
@@ -1111,11 +757,6 @@ function attachShellListeners(): void {
     void navigator.clipboard?.writeText(summary);
     showToast("Summary copied to clipboard");
   });
-  document.getElementById("m-toggle-sb")?.addEventListener("click", () => {
-    state.openMenu = null;
-    state.sidebarCollapsed = !state.sidebarCollapsed;
-    renderApp();
-  });
   document.getElementById("m-toggle-theme")?.addEventListener("click", async () => {
     state.openMenu = null;
     if (!state.config) return;
@@ -1124,13 +765,6 @@ function attachShellListeners(): void {
     state.config = await api.saveSettings(next);
     applyDisplayPreferences(state.config);
     renderApp();
-  });
-  document.getElementById("m-back")?.addEventListener("click", goBack);
-  document.getElementById("m-fwd")?.addEventListener("click", goForward);
-  document.getElementById("m-search")?.addEventListener("click", () => {
-    state.openMenu = null;
-    state.quickSearchOpen = true;
-    renderOverlays();
   });
   document.getElementById("m-glossary")?.addEventListener("click", () => {
     state.openMenu = null;
@@ -1142,19 +776,19 @@ function attachShellListeners(): void {
     navigate("settings");
   });
 
-  // Left toolbar & sidebar
+  // Top bar actions
   document.getElementById("tb-home")?.addEventListener("click", () => navigate("token-usage"));
-  document.getElementById("tb-toggle-sidebar")?.addEventListener("click", () => {
-    state.sidebarCollapsed = !state.sidebarCollapsed;
-    renderApp();
-  });
-  document.getElementById("tb-back")?.addEventListener("click", goBack);
-  document.getElementById("tb-forward")?.addEventListener("click", goForward);
+  document.getElementById("tb-rescan")?.addEventListener("click", () => void runRescan());
   document.getElementById("tb-search")?.addEventListener("click", () => {
+    state.openMenu = null;
     state.quickSearchOpen = true;
+    state.quickSearchQuery = "";
+    state.quickSearchIdx = 0;
     renderOverlays();
   });
-  document.getElementById("sb-rescan")?.addEventListener("click", () => void runRescan());
+  document.getElementById("tb-settings")?.addEventListener("click", () => {
+    navigate(state.screen === "settings" ? "token-usage" : "settings");
+  });
 
   document.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
     el.addEventListener("click", () => {
@@ -1163,101 +797,12 @@ function attachShellListeners(): void {
     });
   });
 
-  document.querySelectorAll<HTMLElement>("[data-src-filter]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const sf = el.dataset.srcFilter;
-      if (sf) {
-        state.filter.sourceFilter = state.filter.sourceFilter === sf ? "all" : sf;
-        void refreshDashboard();
-      }
-    });
-  });
-
-  document.querySelectorAll<HTMLElement>("[data-session]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const sid = el.dataset.session;
-      if (sid) navigate("session-detail", sid);
-    });
-  });
-
-  document.querySelectorAll<HTMLElement>(".sidebar-project-title[data-proj]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const proj = el.dataset.proj;
-      if (proj) {
-        state.tokenUsageFilter = { ...state.tokenUsageFilter, project: proj };
-        navigate("token-usage");
-        void refreshTokenUsage();
-      }
-    });
-  });
-
-  // Breadcrumb & header actions
-  document.getElementById("bc-sessions")?.addEventListener("click", () => navigate("sessions"));
-  document.getElementById("bc-more-btn")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    state.openMenu = state.openMenu === "more" ? null : "more";
-    renderApp();
-  });
-  document.getElementById("act-export-csv")?.addEventListener("click", async () => {
-    state.openMenu = null;
-    const res = await api.exportCsv(state.filter);
-    showToast(`Exported ${res.rowCount} rows to ${res.path}`);
-    renderApp();
-  });
-  document.getElementById("act-copy-summary")?.addEventListener("click", async () => {
-    state.openMenu = null;
-    const summary = await api.copySummary(state.filter);
-    void navigator.clipboard?.writeText(summary);
-    showToast("Summary copied to clipboard");
-    renderApp();
-  });
-  document.getElementById("bc-glossary-btn")?.addEventListener("click", () => {
-    state.glossaryHighlight = null;
-    state.glossaryOpen = !state.glossaryOpen;
-    renderOverlays();
-  });
-
-  // Filter bar
-  document.getElementById("f-date")?.addEventListener("change", (e) => {
-    state.filter.datePreset = (e.target as HTMLSelectElement).value as FilterState["datePreset"];
-    void refreshDashboard();
-  });
-  document.getElementById("f-start")?.addEventListener("change", (e) => {
-    state.filter.customStart = (e.target as HTMLInputElement).value || null;
-    void refreshDashboard();
-  });
-  document.getElementById("f-end")?.addEventListener("change", (e) => {
-    state.filter.customEnd = (e.target as HTMLInputElement).value || null;
-    void refreshDashboard();
-  });
-  document.querySelectorAll<HTMLButtonElement>(".source-seg-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.filter.sourceFilter = btn.dataset.src || "all";
-      void refreshDashboard();
-    });
-  });
-  document.getElementById("f-project")?.addEventListener("change", (e) => {
-    const val = (e.target as HTMLSelectElement).value;
-    state.filter.projectFilter = val ? val : null;
-    void refreshDashboard();
-  });
-  document.getElementById("f-model")?.addEventListener("change", (e) => {
-    state.filter.modelId = (e.target as HTMLSelectElement).value;
-    void refreshDashboard();
-  });
-  document.getElementById("f-currency")?.addEventListener("change", (e) => {
-    state.filter.currency = (e.target as HTMLSelectElement).value as "INR" | "USD";
-    void refreshDashboard();
-  });
-  document.getElementById("f-reset")?.addEventListener("click", resetFilters);
-
-  // Scroll & status line
+  // Scroll
   const scroller = document.getElementById("panel-scroll");
   scroller?.addEventListener("scroll", updateScrollFab);
   document.getElementById("scroll-down-fab")?.addEventListener("click", () => {
     scroller?.scrollBy({ top: 320, behavior: "smooth" });
   });
-  document.getElementById("status-line")?.addEventListener("click", () => navigate("data-sources"));
 }
 
 // Global keyboard shortcuts & click-outside menu closing
@@ -1285,6 +830,8 @@ window.addEventListener("keydown", (e) => {
     } else if (state.openMenu) {
       state.openMenu = null;
       renderApp();
+    } else if (state.screen === "settings") {
+      goBack();
     }
   } else if (state.quickSearchOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
     e.preventDefault();

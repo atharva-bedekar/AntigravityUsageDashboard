@@ -438,16 +438,10 @@ export interface AboutInfo {
   dbPath: string;
 }
 
-export type ScreenId =
-  | "token-usage"
-  | "sessions"
-  | "session-detail"
-  | "data-sources"
-  | "settings";
+export type ScreenId = "token-usage" | "settings";
 
 export interface NavHistoryEntry {
   screen: ScreenId;
-  sessionId?: string;
 }
 
 // ---------------------------------------------------------------------------

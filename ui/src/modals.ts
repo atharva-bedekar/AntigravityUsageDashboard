@@ -1,10 +1,10 @@
 import { DashboardPayload, ScreenId } from "./types.ts";
-import { escapeHtml, formatMoney } from "./format.ts";
+import { escapeHtml, formatMoney, formatTokens } from "./format.ts";
 import { GLOSSARY_ITEMS } from "./glossary.ts";
-import { appLogoSvg, icons, pixelALoaderSvg, sourceBadgeHtml } from "./icons.ts";
+import { appLogoSvg, icons, pixelALoaderSvg } from "./icons.ts";
 
 export interface QuickSearchItem {
-  group: "Screens" | "Projects" | "Sessions";
+  group: "Screens" | "Projects";
   label: string;
   sublabel?: string;
   badgeHtml?: string;
@@ -18,7 +18,7 @@ export function renderQuickSearchModal(
   selectedIdx: number,
   onQueryChange: (q: string) => void,
   onClose: () => void,
-  onNavigate: (screen: ScreenId, sessionId?: string) => void,
+  onNavigate: (screen: ScreenId) => void,
   onFilterProject: (project: string) => void
 ): void {
   const q = query.trim().toLowerCase();
@@ -26,8 +26,6 @@ export function renderQuickSearchModal(
 
   const screens: Array<{ id: ScreenId; label: string }> = [
     { id: "token-usage", label: "Token Usage" },
-    { id: "sessions", label: "Sessions" },
-    { id: "data-sources", label: "Data Sources" },
     { id: "settings", label: "Settings" },
   ];
 
@@ -53,31 +51,9 @@ export function renderQuickSearchModal(
         items.push({
           group: "Projects",
           label: p.project,
-          sublabel: `${p.sessionCount} sessions · ≈ ${formatMoney(p.costCurrency, data.filter.currency)}`,
+          sublabel: `${formatTokens(p.total)} tokens · ≈ ${formatMoney(p.costCurrency, data.filter.currency)}`,
           action: () => {
             onFilterProject(p.project);
-            onClose();
-          },
-        });
-      });
-
-    data.sessions
-      .filter(
-        (s) =>
-          !q ||
-          s.title.toLowerCase().includes(q) ||
-          s.shortId.toLowerCase().includes(q) ||
-          s.project.toLowerCase().includes(q)
-      )
-      .slice(0, 8)
-      .forEach((s) => {
-        items.push({
-          group: "Sessions",
-          label: s.title,
-          sublabel: `${s.project} · ${s.shortId}`,
-          badgeHtml: sourceBadgeHtml(s.source),
-          action: () => {
-            onNavigate("session-detail", s.sessionId);
             onClose();
           },
         });
@@ -85,7 +61,7 @@ export function renderQuickSearchModal(
   }
 
   const clampedIdx = Math.max(0, Math.min(selectedIdx, Math.max(0, items.length - 1)));
-  const groups: Array<"Screens" | "Projects" | "Sessions"> = ["Screens", "Projects", "Sessions"];
+  const groups: Array<"Screens" | "Projects"> = ["Screens", "Projects"];
 
   let runningIdx = 0;
   const listHtml = groups
@@ -114,7 +90,7 @@ export function renderQuickSearchModal(
       <div class="quick-search-modal" role="dialog" aria-label="Quick search">
         <div class="quick-search-input-row">
           <span style="color:var(--text-muted);display:flex">${icons.search(16)}</span>
-          <input id="qs-input" class="quick-search-input" type="text" placeholder="Jump to session, project, or screen…" value="${escapeHtml(query)}" />
+          <input id="qs-input" class="quick-search-input" type="text" placeholder="Jump to project or screen…" value="${escapeHtml(query)}" />
           <button type="button" class="icon-btn" id="qs-close" aria-label="Close">${icons.close(15)}</button>
         </div>
         <div class="quick-search-results">
@@ -208,25 +184,21 @@ export function renderFirstScanLoader(container: HTMLElement, fileCountHint: num
 
 export function renderFirstRunEmpty(
   container: HTMLElement,
-  appPath: string,
-  cliPath: string,
-  onOpenSettings: () => void
+  onRescan: () => void
 ): void {
   container.innerHTML = `
     <div class="loader-overlay">
       <div style="width:48px;height:48px;border-radius:12px;background:var(--bg-subtle);display:flex;align-items:center;justify-content:center">
         ${appLogoSvg(28)}
       </div>
-      <div style="font-size:18px;font-weight:500">No Antigravity data found</div>
+      <div style="font-size:18px;font-weight:500">No Antigravity usage data found yet</div>
       <div style="font-size:13px;color:var(--text-muted);max-width:460px">
-        Looked in <span class="code-chip">${escapeHtml(appPath)}</span> and <span class="code-chip">${escapeHtml(cliPath)}</span>.
+        Run Antigravity locally and rescan to view your token usage.
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-        <button type="button" class="btn-primary" id="empty-choose-folder">Choose folder…</button>
-        <button type="button" class="link-btn" id="empty-open-settings">Open Settings</button>
+        <button type="button" class="btn-primary" id="empty-rescan">Rescan</button>
       </div>
     </div>
   `;
-  container.querySelector("#empty-choose-folder")?.addEventListener("click", onOpenSettings);
-  container.querySelector("#empty-open-settings")?.addEventListener("click", onOpenSettings);
+  container.querySelector("#empty-rescan")?.addEventListener("click", onRescan);
 }

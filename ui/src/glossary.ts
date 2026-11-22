@@ -31,19 +31,14 @@ export const GLOSSARY_ITEMS: GlossaryItem[] = [
     definition: "Tokens multiplied by the API list price of the selected model. Not what you were charged on a subscription.",
   },
   {
-    key: "session",
-    term: "Session",
-    definition: "One Antigravity conversation (App or CLI), identified by its conversation UUID.",
-  },
-  {
     key: "subagent",
     term: "Subagent",
-    definition: "A child session started by another session. Its usage also rolls up into its parent when grouped ('incl. subagents').",
+    definition: "A child agent run started by another agent. Its usage can be included or filtered separately on the Token Usage screen.",
   },
   {
     key: "unattributed",
     term: "Unattributed",
-    definition: "Sessions where no workspace or project folder was recorded in the local metadata.",
+    definition: "Usage where no workspace or project folder was recorded in the local metadata.",
   },
   {
     key: "source",

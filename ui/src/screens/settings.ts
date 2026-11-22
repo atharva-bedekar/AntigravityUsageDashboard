@@ -3,7 +3,6 @@ import { escapeHtml } from "../format.ts";
 import { icons } from "../icons.ts";
 
 export type SettingsSection =
-  | "sources"
   | "pricing"
   | "money"
   | "display"
@@ -15,7 +14,6 @@ export interface SettingsCallbacks {
   onSectionChange: (sec: SettingsSection) => void;
   onSearchChange: (q: string) => void;
   onSaveConfig: (next: AppConfig) => Promise<void>;
-  onRestoreDefaults: () => Promise<void>;
   onClearSnapshots: () => Promise<void>;
   onOpenFolder: (path: string) => void;
   onExportDiagnostics: () => Promise<void>;
@@ -23,7 +21,6 @@ export interface SettingsCallbacks {
 }
 
 const SECTIONS: Array<{ id: SettingsSection; label: string }> = [
-  { id: "sources", label: "Sources" },
   { id: "pricing", label: "Pricing" },
   { id: "money", label: "Money" },
   { id: "display", label: "Display" },
@@ -68,11 +65,6 @@ export function renderSettings(
 
         <div class="stack-gap">
           ${
-            showAll || activeSection === "sources"
-              ? renderSourcesSection(config, match)
-              : ""
-          }
-          ${
             showAll || activeSection === "pricing"
               ? renderPricingSection(config, data, match)
               : ""
@@ -94,7 +86,7 @@ export function renderSettings(
           }
           ${
             showAll || activeSection === "privacy"
-              ? renderPrivacySection(config, match)
+              ? renderPrivacySection(match)
               : ""
           }
           ${
@@ -133,54 +125,6 @@ export function renderSettings(
     mutator(draft);
     void cb.onSaveConfig(draft);
   };
-
-  // Sources events
-  container.querySelector("#set-app-path")?.addEventListener("change", (e) => {
-    updateAndSave((d) => {
-      d.appBrainRoot = (e.target as HTMLInputElement).value.trim();
-    });
-  });
-  container.querySelector("#set-app-enabled")?.addEventListener("change", (e) => {
-    updateAndSave((d) => {
-      d.appEnabled = (e.target as HTMLInputElement).checked;
-    });
-  });
-  container.querySelector("#set-cli-path")?.addEventListener("change", (e) => {
-    updateAndSave((d) => {
-      d.cliBrainRoot = (e.target as HTMLInputElement).value.trim();
-    });
-  });
-  container.querySelector("#set-cli-enabled")?.addEventListener("change", (e) => {
-    updateAndSave((d) => {
-      d.cliEnabled = (e.target as HTMLInputElement).checked;
-    });
-  });
-  container.querySelector("#set-read-sqlite")?.addEventListener("change", (e) => {
-    updateAndSave((d) => {
-      d.readAppSqlite = (e.target as HTMLInputElement).checked;
-    });
-  });
-  container.querySelector("#set-restore-defaults")?.addEventListener("click", () => {
-    void cb.onRestoreDefaults();
-  });
-  container.querySelector("#set-add-custom")?.addEventListener("click", () => {
-    const nameEl = container.querySelector("#set-custom-name") as HTMLInputElement | null;
-    const pathEl = container.querySelector("#set-custom-path") as HTMLInputElement | null;
-    const name = nameEl?.value.trim() || "";
-    const path = pathEl?.value.trim() || "";
-    if (!name || !path) return;
-    updateAndSave((d) => {
-      d.customSources.push({ name, path, enabled: true });
-    });
-  });
-  container.querySelectorAll<HTMLButtonElement>(".set-remove-custom").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.idx);
-      updateAndSave((d) => {
-        d.customSources.splice(idx, 1);
-      });
-    });
-  });
 
   // Pricing events
   container.querySelector("#set-default-model")?.addEventListener("change", (e) => {
@@ -297,74 +241,6 @@ export function renderSettings(
   container.querySelector("#set-export-diag")?.addEventListener("click", () => {
     void cb.onExportDiagnostics();
   });
-}
-
-function renderSourcesSection(config: AppConfig, match: (s: string) => boolean): string {
-  if (!match("sources app cli folder sqlite custom")) return "";
-  return `
-    <div class="card">
-      <h3 class="card-title" style="margin-bottom:6px">Sources</h3>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Antigravity App folder</div>
-          <div class="setting-help">Where the App keeps conversations.</div>
-        </div>
-        <div class="setting-control">
-          <input id="set-app-path" class="text-input mono" style="width:260px" value="${escapeHtml(config.appBrainRoot)}" />
-          <label class="switch"><input type="checkbox" id="set-app-enabled" ${config.appEnabled ? "checked" : ""} /><span class="switch-slider"></span></label>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Antigravity CLI folder</div>
-          <div class="setting-help">Where the CLI keeps transcripts and history.</div>
-        </div>
-        <div class="setting-control">
-          <input id="set-cli-path" class="text-input mono" style="width:260px" value="${escapeHtml(config.cliBrainRoot)}" />
-          <label class="switch"><input type="checkbox" id="set-cli-enabled" ${config.cliEnabled ? "checked" : ""} /><span class="switch-slider"></span></label>
-        </div>
-      </div>
-
-      <div class="setting-row" style="align-items:flex-start">
-        <div>
-          <div class="setting-label">Custom brain folders</div>
-          <div class="setting-help">Additional local brain directories to scan.</div>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-            ${config.customSources
-              .map(
-                (cs, idx) => `
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="code-chip">${escapeHtml(cs.name)}</span>
-                <span class="code-chip">${escapeHtml(cs.path)}</span>
-                <button type="button" class="icon-btn set-remove-custom" data-idx="${idx}" title="Remove">×</button>
-              </div>`
-              )
-              .join("")}
-          </div>
-        </div>
-        <div class="setting-control">
-          <input id="set-custom-name" class="text-input" style="width:90px" placeholder="Name" />
-          <input id="set-custom-path" class="text-input mono" style="width:170px" placeholder="Folder path" />
-          <button type="button" class="btn-secondary" id="set-add-custom">+ Add</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Read App titles & projects from conversation_summaries.db</div>
-          <div class="setting-help">Opened read-only. Turn off to show IDs only.</div>
-        </div>
-        <div class="setting-control">
-          <label class="switch"><input type="checkbox" id="set-read-sqlite" ${config.readAppSqlite ? "checked" : ""} /><span class="switch-slider"></span></label>
-        </div>
-      </div>
-
-      <div style="padding-top:10px">
-        <button type="button" class="link-btn" id="set-restore-defaults">Restore default paths</button>
-      </div>
-    </div>
-  `;
 }
 
 function renderPricingSection(
@@ -583,7 +459,7 @@ function renderRefreshSection(config: AppConfig, match: (s: string) => boolean):
 
       <div class="setting-row">
         <div>
-          <div class="setting-label">Watch folders for new sessions</div>
+          <div class="setting-label">Watch folders for new usage</div>
           <div class="setting-help">Updates as soon as Antigravity writes a new log.</div>
         </div>
         <label class="switch"><input type="checkbox" id="set-watcher" ${config.refresh.fileWatcherEnabled ? "checked" : ""} /><span class="switch-slider"></span></label>
@@ -600,18 +476,13 @@ function renderRefreshSection(config: AppConfig, match: (s: string) => boolean):
   `;
 }
 
-function renderPrivacySection(config: AppConfig, match: (s: string) => boolean): string {
+function renderPrivacySection(match: (s: string) => boolean): string {
   if (!match("privacy local offline telemetry read-only")) return "";
   return `
     <div class="card">
       <h3 class="card-title" style="margin-bottom:6px">Privacy</h3>
       <div class="epistemic-banner" style="margin-bottom:12px">
         <span>Reads local files only. Never uploads, never sends telemetry, never writes to Antigravity's folders.</span>
-      </div>
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">Folders read on this machine:</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
-        <span class="code-chip">${escapeHtml(config.appBrainRoot)}</span>
-        <span class="code-chip">${escapeHtml(config.cliBrainRoot)}</span>
       </div>
       <button type="button" class="btn-secondary" id="set-open-data">Open app config/data folder</button>
     </div>
