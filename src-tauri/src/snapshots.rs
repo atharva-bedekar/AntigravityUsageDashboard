@@ -239,6 +239,10 @@ mod tests {
                 metadata_source: "history.jsonl".to_string(),
                 steps: vec![],
                 command_execs: vec![],
+                spawn_step_index: None,
+                written_plan_paths: vec![],
+                referenced_plan_paths: vec![],
+                message_turns: std::collections::HashMap::new(),
             }],
             diagnostics: ScanDiagnostics {
                 scanned_at: "".into(),

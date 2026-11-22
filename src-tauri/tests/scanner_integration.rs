@@ -474,3 +474,160 @@ fn transcript_merges_thinking_level_suffixes_into_base_model_names() {
     assert_eq!(sw2.to_model, "Claude Sonnet 5.5");
     assert_eq!(parsed.steps[2].observed_model, "Claude Sonnet 5.5");
 }
+
+#[test]
+fn transcript_parses_planner_response_model_slugs_with_priority() {
+    // 1. Explicit model slugs normalized, effort/mode/tiered tokens stripped, effort-only rejected,
+    //    priorities: explicit > active switch > last_explicit > "Unrecorded".
+    let jsonl = concat!(
+        "{\"step_index\":0,\"type\":\"USER_INPUT\",\"source\":\"USER_EXPLICIT\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"content\":\"Start\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"model\":\"claude-opus-4-5-thinking\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"Step 1\"}\n",
+        "{\"step_index\":2,\"type\":\"GENERIC\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:06Z\",\"content\":\"Tool done\"}\n",
+        "{\"step_index\":3,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:10Z\",\"model\":\"high-thinking\",\"input_tokens\":50,\"output_tokens\":10,\"content\":\"Invalid effort-only slug\"}\n",
+        "{\"step_index\":4,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:15Z\",\"model\":\"gemini-3.8-flash-tiered-high\",\"input_tokens\":80,\"output_tokens\":15,\"content\":\"The user changed setting `Model Selection` from `None` to `Gemini 4 Argon`\"}\n",
+        "{\"step_index\":5,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:20Z\",\"input_tokens\":90,\"output_tokens\":20,\"content\":\"No explicit model here\"}\n",
+        "{\"step_index\":6,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:25Z\",\"model\":\"Claude Sonnet 4 (High)\",\"input_tokens\":70,\"output_tokens\":10,\"content\":\"Space-separated explicit\"}\n"
+    );
+
+    let parsed = parse_transcript_reader(
+        &mut Cursor::new(jsonl.as_bytes()),
+        "synthetic/model_slugs.jsonl".to_string(),
+    )
+    .expect("parse model_slugs");
+
+    assert_eq!(parsed.steps[0].observed_model, "Unrecorded");
+    assert_eq!(parsed.steps[1].observed_model, "Claude Opus 4 5");
+    // Step 2 (GENERIC) falls back to last_explicit_model because no switch is active
+    assert_eq!(parsed.steps[2].observed_model, "Claude Opus 4 5");
+    // Step 3 ("high-thinking" -> None) falls back to last_explicit_model
+    assert_eq!(parsed.steps[3].observed_model, "Claude Opus 4 5");
+    // Step 4 has BOTH explicit ("Gemini 3.8 Flash") and switch ("Gemini 4 Argon"): explicit wins!
+    assert_eq!(parsed.steps[4].observed_model, "Gemini 3.8 Flash");
+    // Step 5 has no explicit model, active switch is "Gemini 4 Argon": switch wins over last_explicit!
+    assert_eq!(parsed.steps[5].observed_model, "Gemini 4 Argon");
+    // Step 6 has space-separated explicit model with "(High)" suffix stripped
+    assert_eq!(parsed.steps[6].observed_model, "Claude Sonnet 4");
+}
+
+#[test]
+fn transcript_extracts_plan_paths_excluding_generic_and_placeholders() {
+    let jsonl = concat!(
+        "{\"step_index\":0,\"type\":\"GENERIC\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"content\":\"docs/superpowers/plans/2026-11-10-ignore-generic.md\"}\n",
+        "{\"step_index\":1,\"type\":\"USER_INPUT\",\"source\":\"USER_EXPLICIT\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:01Z\",\"content\":\"Implement docs/superpowers/specs/2026-11-10-design.md and skip docs/superpowers/plans/YYYY-MM-DD-template.md and docs/superpowers/specs/<slug>.md and docs/superpowers/plans/{id}.md\"}\n",
+        "{\"step_index\":2,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"Drafting docs/superpowers/plans/2026-11-10-Feature-Plan.md\",\"tool_calls\":[{\"name\":\"write_to_file\",\"args\":{\"TargetFile\":\"\\\"D:\\\\\\\\Code\\\\\\\\Repo\\\\\\\\docs\\\\\\\\superpowers\\\\\\\\plans\\\\\\\\2026-11-10-Feature-Plan.md\\\"\"}},{\"name\":\"edit_file\",\"args\":{\"filePath\":\"docs/superpowers/specs/2026-11-10-Edited-Spec.md\"}},{\"name\":\"read_file\",\"args\":{\"AbsolutePath\":\"docs\\\\superpowers\\\\specs\\\\2026-11-10-Read-Only.md\"}}]}\n"
+    );
+
+    let parsed = parse_transcript_reader(
+        &mut Cursor::new(jsonl.as_bytes()),
+        "synthetic/plan_paths.jsonl".to_string(),
+    )
+    .expect("parse plan_paths");
+
+    assert_eq!(
+        parsed.written_plan_paths,
+        vec![
+            "docs/superpowers/plans/2026-11-10-feature-plan.md".to_string(),
+            "docs/superpowers/specs/2026-11-10-edited-spec.md".to_string(),
+        ]
+    );
+    // Notice 2026-11-10-feature-plan.md was also mentioned in PLANNER_RESPONSE content,
+    // so it must be excluded from referenced_plan_paths since it's in written_plan_paths.
+    assert_eq!(
+        parsed.referenced_plan_paths,
+        vec![
+            "docs/superpowers/specs/2026-11-10-design.md".to_string(),
+            "docs/superpowers/specs/2026-11-10-read-only.md".to_string(),
+        ]
+    );
+}
+
+#[test]
+fn scanner_extracts_spawn_step_index_and_message_turns() {
+    let tmp = TempDir::new("spawn_and_turns");
+    let app_brain = tmp.path.join("app_brain");
+    let cli_root = tmp.path.join("cli");
+    let cli_brain = cli_root.join("brain");
+    fs::create_dir_all(&app_brain).unwrap();
+    fs::create_dir_all(&cli_brain).unwrap();
+
+    let parent_id = "parent-orch-0001";
+    let sub_json_id = "sub-from-json-0001";
+    let sub_gen_id = "sub-from-gen-0002";
+
+    let parent_dir = cli_brain.join(parent_id);
+    let parent_logs = parent_dir.join(".system_generated").join("logs");
+    let parent_subs = parent_dir.join(".system_generated").join("subagents");
+    fs::create_dir_all(&parent_logs).unwrap();
+    fs::create_dir_all(&parent_subs).unwrap();
+
+    // Parent transcript:
+    // - step 2: PLANNER_RESPONSE sends message to sub-from-json-0001
+    // - step 4: GENERIC spawns sub-from-gen-0002
+    // - step 5: PLANNER_RESPONSE sends JSON-quoted message to sub-from-json-0001
+    // - step 6: SYSTEM_MESSAGE from sub-from-gen-0002
+    // - step 7: GENERIC mentions sub-from-gen-0002 again (earliest step 4 must win)
+    // - step 8: SYSTEM_MESSAGE from sub-from-json-0001
+    let parent_jsonl = concat!(
+        "{\"step_index\":2,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:00Z\",\"input_tokens\":100,\"output_tokens\":20,\"tool_calls\":[{\"name\":\"send_message\",\"args\":{\"Recipient\":\"sub-from-json-0001\",\"Message\":\"Start task 1\"}}]}\n",
+        "{\"step_index\":4,\"type\":\"GENERIC\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:05Z\",\"content\":\"Spawned subagent {\\\"conversationId\\\": \\\"sub-from-gen-0002\\\"}\"}\n",
+        "{\"step_index\":5,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:10Z\",\"input_tokens\":50,\"output_tokens\":10,\"tool_calls\":[{\"name\":\"send_message\",\"args\":{\"recipient\":\"\\\"sub-from-json-0001\\\"\",\"Message\":\"Follow up\"}}]}\n",
+        "{\"step_index\":6,\"type\":\"SYSTEM_MESSAGE\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:15Z\",\"content\":\"[Message] timestamp=2026-11-12T10:00:15Z sender=sub-from-gen-0002 priority=HIGH content=done\"}\n",
+        "{\"step_index\":7,\"type\":\"GENERIC\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:16Z\",\"content\":\"Update conversation_id=sub-from-gen-0002\"}\n",
+        "{\"step_index\":8,\"type\":\"SYSTEM_MESSAGE\",\"source\":\"SYSTEM\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:20Z\",\"content\":\"[Message] timestamp=2026-11-12T10:00:20Z sender=sub-from-json-0001 priority=HIGH content=done\"}\n"
+    );
+    fs::write(parent_logs.join("transcript.jsonl"), parent_jsonl).unwrap();
+
+    // Subagent 1 has explicit spawnStepIndex in JSON
+    fs::write(
+        parent_subs.join("sub1.json"),
+        format!(
+            "{{\"conversationId\":\"{sub_json_id}\",\"spawnStepIndex\":2,\"subagentDescriptor\":{{\"typeName\":\"coder\",\"role\":\"Task 1\"}}}}"
+        ),
+    )
+    .unwrap();
+
+    // Subagent 2 omits spawnStepIndex in JSON -> falls back to parent GENERIC step 4
+    fs::write(
+        parent_subs.join("sub2.json"),
+        format!(
+            "{{\"conversationId\":\"{sub_gen_id}\",\"subagentDescriptor\":{{\"typeName\":\"reviewer\",\"role\":\"Task 2\"}}}}"
+        ),
+    )
+    .unwrap();
+
+    for sid in [sub_json_id, sub_gen_id] {
+        let s_logs = cli_brain.join(sid).join(".system_generated").join("logs");
+        fs::create_dir_all(&s_logs).unwrap();
+        fs::write(
+            s_logs.join("transcript.jsonl"),
+            "{\"step_index\":0,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-12T10:00:02Z\",\"input_tokens\":30,\"output_tokens\":10}\n",
+        )
+        .unwrap();
+    }
+
+    let cfg = default_test_config(&app_brain, &cli_brain);
+    let result = scan_all_sources(&cfg);
+
+    let parent = result
+        .sessions
+        .iter()
+        .find(|s| s.session_id == parent_id)
+        .expect("parent session");
+    assert_eq!(parent.spawn_step_index, None);
+    assert_eq!(parent.message_turns.get(sub_json_id).copied(), Some(3)); // 2 send_message + 1 SYSTEM_MESSAGE
+    assert_eq!(parent.message_turns.get(sub_gen_id).copied(), Some(1)); // 1 SYSTEM_MESSAGE
+
+    let sub1 = result
+        .sessions
+        .iter()
+        .find(|s| s.session_id == sub_json_id)
+        .expect("sub1 session");
+    assert_eq!(sub1.spawn_step_index, Some(2));
+
+    let sub2 = result
+        .sessions
+        .iter()
+        .find(|s| s.session_id == sub_gen_id)
+        .expect("sub2 session");
+    assert_eq!(sub2.spawn_step_index, Some(4));
+}

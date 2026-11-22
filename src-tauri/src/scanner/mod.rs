@@ -269,6 +269,7 @@ fn scan_single_source(spec: &SourceSpec) -> (Vec<SessionRecord>, SourceDiagnosti
 
     let mut readable_ids: HashSet<String> = HashSet::new();
     let mut sessions: Vec<SessionRecord> = Vec::new();
+    let mut parent_spawns: HashMap<String, HashMap<String, i64>> = HashMap::new();
 
     for item in items {
         if item.has_transcript {
@@ -282,10 +283,17 @@ fn scan_single_source(spec: &SourceSpec) -> (Vec<SessionRecord>, SourceDiagnosti
             continue;
         }
 
-        let Some(parsed) = item.parsed else {
+        let Some(mut parsed) = item.parsed else {
             diag.sessions_without_tokens += 1;
             continue;
         };
+
+        if !parsed.spawned_conversations.is_empty() {
+            parent_spawns.insert(
+                item.session_id.clone(),
+                std::mem::take(&mut parsed.spawned_conversations),
+            );
+        }
 
         diag.parse_errors += parsed.parse_errors;
         diag.corrupted_tool_names_dropped += parsed.corrupted_tool_names_dropped;
@@ -346,6 +354,14 @@ fn scan_single_source(spec: &SourceSpec) -> (Vec<SessionRecord>, SourceDiagnosti
                 }
             }
         }
+        if sess.spawn_step_index.is_none() {
+            if let Some(ref pid) = sess.parent_id {
+                sess.spawn_step_index = parent_spawns
+                    .get(pid)
+                    .and_then(|m| m.get(&sess.session_id))
+                    .copied();
+            }
+        }
     }
 
     for sess in &sessions {
@@ -404,6 +420,7 @@ fn build_session_record(
     let mut parent_id = sub_link.map(|l| l.parent_id.clone());
     let agent_type = sub_link.map(|l| l.agent_type.clone());
     let role = sub_link.map(|l| l.role.clone());
+    let spawn_step_index = sub_link.and_then(|l| l.spawn_step_index);
 
     if parent_id.is_none() {
         parent_id = app_entry.and_then(|a| a.parent_id.clone());
@@ -499,6 +516,10 @@ fn build_session_record(
         metadata_source: metadata_source.to_string(),
         steps: parsed.steps,
         command_execs: parsed.command_execs,
+        spawn_step_index,
+        written_plan_paths: parsed.written_plan_paths,
+        referenced_plan_paths: parsed.referenced_plan_paths,
+        message_turns: parsed.message_turns,
     }
 }
 

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -63,6 +63,32 @@ fn stamp_re() -> &'static Regex {
     })
 }
 
+fn plan_path_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)docs[/\\]+superpowers[/\\]+(plans|specs)[/\\]+([A-Za-z0-9._-]+\.md)")
+            .expect("valid plan path regex")
+    })
+}
+
+fn spawn_conv_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(
+            r#"(?i)(?:\\?"?)(?:conversationId|conversation_id)(?:\\?"?)\s*[:=]\s*(?:\\?"?)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Za-z0-9_-]{8,})(?:\\?"?)"#,
+        )
+        .expect("valid spawn conversation regex")
+    })
+}
+
+fn system_sender_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)\[Message\][^\r\n]*?\bsender=([A-Za-z0-9._-]+)")
+            .expect("valid system sender regex")
+    })
+}
+
 /// Locate the preferred transcript file inside a session directory (`transcript_full.jsonl` > `transcript.jsonl`).
 pub fn find_transcript_file(session_dir: &Path) -> Option<PathBuf> {
     let logs_dir = session_dir.join(".system_generated").join("logs");
@@ -101,6 +127,10 @@ pub struct ParsedTranscript {
     pub capped_step_gaps: u64,
     pub steps: Vec<StepRecord>,
     pub command_execs: Vec<CommandExecRecord>,
+    pub written_plan_paths: Vec<String>,
+    pub referenced_plan_paths: Vec<String>,
+    pub spawned_conversations: HashMap<String, i64>,
+    pub message_turns: HashMap<String, u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -252,19 +282,116 @@ fn normalize_model_label(raw: &str) -> String {
     }
 }
 
-fn assign_observed_models(steps: &mut [StepRecord]) {
-    let mut current = steps
+fn is_effort_or_mode_token(tok: &str) -> bool {
+    matches!(
+        tok.to_ascii_lowercase().as_str(),
+        "high" | "medium" | "low" | "minimal" | "max" | "thinking" | "fast" | "default"
+    )
+}
+
+pub fn normalize_model_slug(raw: &str) -> Option<String> {
+    if !is_valid_model_name(raw) {
+        return None;
+    }
+    let trimmed = trim_model_raw(raw);
+    if trimmed.contains('-') && !trimmed.contains(' ') {
+        let mut tokens: Vec<&str> = trimmed
+            .split('-')
+            .filter(|t| !t.is_empty() && !t.eq_ignore_ascii_case("tiered"))
+            .collect();
+        while tokens
+            .last()
+            .is_some_and(|t| is_effort_or_mode_token(t))
+        {
+            tokens.pop();
+        }
+        if tokens.is_empty() {
+            return None;
+        }
+        let formatted: Vec<String> = tokens
+            .into_iter()
+            .map(|tok| {
+                let mut chars = tok.chars();
+                if let Some(first) = chars.next() {
+                    if first.is_ascii_alphabetic() {
+                        let mut out = String::with_capacity(tok.len());
+                        out.push(first.to_ascii_uppercase());
+                        for c in chars {
+                            out.push(c.to_ascii_lowercase());
+                        }
+                        return out;
+                    }
+                }
+                tok.to_string()
+            })
+            .collect();
+        Some(truncate_chars(&formatted.join(" "), 60))
+    } else {
+        let cleaned = clean_model_name(trimmed);
+        if cleaned.is_empty() || cleaned.eq_ignore_ascii_case("none") {
+            None
+        } else {
+            Some(cleaned)
+        }
+    }
+}
+
+fn assign_observed_models(steps: &mut [StepRecord], explicit_models: &[Option<String>]) {
+    let mut current_switch_model = steps
         .iter()
         .find_map(|s| s.model_switch.as_ref())
         .map(|sw| normalize_model_label(&sw.from_model))
         .unwrap_or_else(|| "Unrecorded".to_string());
+    let mut last_explicit_model: Option<String> = None;
 
-    for step in steps.iter_mut() {
+    for (step, explicit) in steps.iter_mut().zip(explicit_models.iter()) {
         if let Some(sw) = &step.model_switch {
-            current = normalize_model_label(&sw.to_model);
+            current_switch_model = normalize_model_label(&sw.to_model);
         }
-        step.observed_model = current.clone();
+        if let Some(m) = explicit {
+            step.observed_model = m.clone();
+            last_explicit_model = Some(m.clone());
+        } else if current_switch_model != "Unrecorded" {
+            step.observed_model = current_switch_model.clone();
+        } else if let Some(prev) = &last_explicit_model {
+            step.observed_model = prev.clone();
+        } else {
+            step.observed_model = "Unrecorded".to_string();
+        }
     }
+}
+
+pub fn extract_plan_paths_from_text(text: &str) -> Vec<String> {
+    let normalized = text.replace('\\', "/");
+    let mut out = Vec::new();
+    for caps in plan_path_re().captures_iter(&normalized) {
+        let Some(kind) = caps.get(1).map(|m| m.as_str()) else {
+            continue;
+        };
+        let Some(file) = caps.get(2).map(|m| m.as_str()) else {
+            continue;
+        };
+        let file_lower = file.to_ascii_lowercase();
+        if file_lower.starts_with("yyyy-mm-dd")
+            || file.contains('<')
+            || file.contains('>')
+            || file.contains('{')
+            || file.contains('}')
+        {
+            continue;
+        }
+        let kind_lower = kind.to_ascii_lowercase();
+        out.push(format!("docs/superpowers/{kind_lower}/{file_lower}"));
+    }
+    out
+}
+
+fn extract_arg_string(val: &Value) -> Option<String> {
+    let s = val.as_str()?;
+    if let Ok(unwrapped) = serde_json::from_str::<String>(s) {
+        return Some(unwrapped.replace("\\\\", "\\"));
+    }
+    Some(s.replace("\\\\", "\\"))
 }
 
 fn parse_command_completion(content: &str) -> Option<(f64, Option<i32>, bool)> {
@@ -336,6 +463,9 @@ pub fn parse_transcript_reader<R: BufRead>(
 
     let mut unique_tools: HashSet<String> = HashSet::new();
     let mut pending_cmds: Vec<PendingCommand> = Vec::new();
+    let mut explicit_models: Vec<Option<String>> = Vec::new();
+    let mut written_set: HashSet<String> = HashSet::new();
+    let mut referenced_set: HashSet<String> = HashSet::new();
     let mut first_dt: Option<DateTime<FixedOffset>> = None;
     let mut last_dt: Option<DateTime<FixedOffset>> = None;
     let mut prev_step_dt: Option<DateTime<FixedOffset>> = None;
@@ -467,6 +597,44 @@ pub fn parse_transcript_reader<R: BufRead>(
         let permission_denied = !content_str.is_empty() && denial_re().is_match(content_str);
 
         let model_switch = extract_model_switch(step_index, content_str, &type_upper);
+        let explicit_model = if type_upper == "PLANNER_RESPONSE" {
+            obj.get("model")
+                .and_then(|v| v.as_str())
+                .and_then(normalize_model_slug)
+        } else {
+            None
+        };
+
+        if type_upper == "GENERIC" {
+            for caps in spawn_conv_re().captures_iter(content_str) {
+                if let Some(m) = caps.get(1) {
+                    let cid = m.as_str();
+                    if !matches!(
+                        cid.to_ascii_lowercase().as_str(),
+                        "undefined"
+                            | "nullable"
+                            | "required"
+                            | "optional"
+                            | "conversation"
+                            | "conversationid"
+                    ) {
+                        out.spawned_conversations
+                            .entry(cid.to_string())
+                            .or_insert(step_index);
+                    }
+                }
+            }
+        } else if type_upper == "SYSTEM_MESSAGE" {
+            for caps in system_sender_re().captures_iter(content_str) {
+                if let Some(m) = caps.get(1) {
+                    *out.message_turns.entry(m.as_str().to_string()).or_insert(0) += 1;
+                }
+            }
+        } else if type_upper == "USER_INPUT" || type_upper == "PLANNER_RESPONSE" {
+            for p in extract_plan_paths_from_text(content_str) {
+                referenced_set.insert(p);
+            }
+        }
 
         // Sanitize tool calls
         let mut step_tool_calls = Vec::new();
@@ -485,7 +653,48 @@ pub fn parse_transcript_reader<R: BufRead>(
                     continue;
                 }
 
-                let args = tc.get("args");
+                let parsed_args: Option<Value> = match tc.get("args") {
+                    Some(Value::String(s)) => serde_json::from_str::<Value>(s).ok(),
+                    _ => None,
+                };
+                let args = parsed_args.as_ref().or_else(|| tc.get("args"));
+
+                if type_upper == "PLANNER_RESPONSE" {
+                    if matches!(
+                        raw_name,
+                        "write_file"
+                            | "write_to_file"
+                            | "edit_file"
+                            | "replace_file_content"
+                            | "multi_replace_file_content"
+                    ) {
+                        for key in ["Path", "TargetFile", "path", "filePath"] {
+                            if let Some(val_str) = args.and_then(|a| a.get(key)).and_then(extract_arg_string) {
+                                for p in extract_plan_paths_from_text(&val_str) {
+                                    written_set.insert(p);
+                                }
+                            }
+                        }
+                    } else if matches!(raw_name, "read_file" | "view_file") {
+                        for key in ["Path", "AbsolutePath", "path"] {
+                            if let Some(val_str) = args.and_then(|a| a.get(key)).and_then(extract_arg_string) {
+                                for p in extract_plan_paths_from_text(&val_str) {
+                                    referenced_set.insert(p);
+                                }
+                            }
+                        }
+                    } else if raw_name == "send_message" {
+                        if let Some(recipient) = args
+                            .and_then(|a| a.get("Recipient").or_else(|| a.get("recipient")))
+                            .and_then(extract_arg_string)
+                        {
+                            let trimmed_rec = recipient.trim();
+                            if !trimmed_rec.is_empty() {
+                                *out.message_turns.entry(trimmed_rec.to_string()).or_insert(0) += 1;
+                            }
+                        }
+                    }
+                }
                 let server_name = if raw_name == "call_mcp_tool" {
                     args.and_then(|a| a.get("ServerName"))
                         .and_then(|v| v.as_str())
@@ -557,6 +766,7 @@ pub fn parse_transcript_reader<R: BufRead>(
             }
         }
 
+        explicit_models.push(explicit_model);
         out.steps.push(StepRecord {
             step_index,
             created_at: created_at_str,
@@ -583,7 +793,18 @@ pub fn parse_transcript_reader<R: BufRead>(
         });
     }
 
-    assign_observed_models(&mut out.steps);
+    assign_observed_models(&mut out.steps, &explicit_models);
+
+    let mut written_plan_paths: Vec<String> = written_set.iter().cloned().collect();
+    written_plan_paths.sort();
+    out.written_plan_paths = written_plan_paths;
+
+    let mut referenced_plan_paths: Vec<String> = referenced_set
+        .into_iter()
+        .filter(|p| !written_set.contains(p))
+        .collect();
+    referenced_plan_paths.sort();
+    out.referenced_plan_paths = referenced_plan_paths;
 
     if let (Some(f), Some(l)) = (first_dt, last_dt) {
         let secs = (l - f).num_seconds();

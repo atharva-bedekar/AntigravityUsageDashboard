@@ -1672,6 +1672,10 @@ mod tests {
             metadata_source: "test".to_string(),
             steps,
             command_execs: Vec::new(),
+            spawn_step_index: None,
+            written_plan_paths: Vec::new(),
+            referenced_plan_paths: Vec::new(),
+            message_turns: std::collections::HashMap::new(),
         }
     }
 

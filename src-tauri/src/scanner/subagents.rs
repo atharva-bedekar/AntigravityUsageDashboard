@@ -70,6 +70,10 @@ pub fn load_subagent_links(brain_root: &Path) -> HashMap<String, SubagentLink> {
                 .unwrap_or("")
                 .trim()
                 .to_string();
+            let spawn_step_index = val
+                .get("spawnStepIndex")
+                .or_else(|| val.get("spawn_step_index"))
+                .and_then(|v| v.as_i64());
 
             links.insert(
                 cid.clone(),
@@ -82,6 +86,7 @@ pub fn load_subagent_links(brain_root: &Path) -> HashMap<String, SubagentLink> {
                         agent_type
                     },
                     role,
+                    spawn_step_index,
                 },
             );
         }

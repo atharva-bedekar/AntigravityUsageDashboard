@@ -133,6 +133,14 @@ pub struct SessionRecord {
     pub metadata_source: String,
     pub steps: Vec<StepRecord>,
     pub command_execs: Vec<CommandExecRecord>,
+    #[serde(default)]
+    pub spawn_step_index: Option<i64>,
+    #[serde(default)]
+    pub written_plan_paths: Vec<String>,
+    #[serde(default)]
+    pub referenced_plan_paths: Vec<String>,
+    #[serde(default)]
+    pub message_turns: std::collections::HashMap<String, u64>,
 }
 
 /// Parent/subagent relationship discovered from `.system_generated/subagents/*.json` or SQLite.
@@ -143,6 +151,8 @@ pub struct SubagentLink {
     pub parent_id: String,
     pub agent_type: String,
     pub role: String,
+    #[serde(default)]
+    pub spawn_step_index: Option<i64>,
 }
 
 /// Per-source scan diagnostics shown on the Data Sources screen.
@@ -731,4 +741,123 @@ pub struct TokenUsagePayload {
     pub totals: TokenUsageTotals,
     pub time_series: Vec<TimeUsageBucket>,
     pub by_model: Vec<ModelUsageRow>,
+}
+
+// ---------------------------------------------------------------------------
+// Sessions & Orchestration DAG Models
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SessionRole {
+    Planner,
+    Orchestrator,
+    Main,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SessionLinkDirection {
+    ToOrchestrator,
+    FromPlanner,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionsFilter {
+    pub period: TimePeriod,
+    pub project: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionOverviewRow {
+    pub session_id: String,
+    pub title: String,
+    pub project: String,
+    pub source: SourceKind,
+    pub role: SessionRole,
+    pub subagent_count: u64,
+    pub fresh_in: u64,
+    pub cached: u64,
+    pub output: u64,
+    pub total: u64,
+    pub cache_hit_rate: f64,
+    pub wall_time_secs: u64,
+    pub calls: u64,
+    pub first_utc: Option<String>,
+    pub last_utc: Option<String>,
+    pub linked_session_id: Option<String>,
+    pub link_direction: Option<SessionLinkDirection>,
+    pub linked_plan_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionsOverviewPayload {
+    pub filter: SessionsFilter,
+    pub window_start: Option<String>,
+    pub window_end: String,
+    pub available_projects: Vec<String>,
+    pub sessions: Vec<SessionOverviewRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DagNode {
+    pub node_id: String,
+    pub session_id: String,
+    pub parent_node_id: Option<String>,
+    pub is_root: bool,
+    pub wave_index: u32,
+    pub agent_type: String,
+    pub role_label: String,
+    pub model: String,
+    pub fresh_in: u64,
+    pub cached: u64,
+    pub output: u64,
+    pub total: u64,
+    pub cache_hit_rate: f64,
+    pub wall_time_secs: u64,
+    pub calls: u64,
+    pub tool_call_count: u64,
+    pub message_turns: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DagEdge {
+    pub from_node_id: String,
+    pub to_node_id: String,
+    pub kind: String,
+    pub message_turns: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionDagGraph {
+    pub session_id: String,
+    pub title: String,
+    pub project: String,
+    pub role: SessionRole,
+    pub wave_count: u32,
+    pub nodes: Vec<DagNode>,
+    pub edges: Vec<DagEdge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CrossSessionLink {
+    pub planner_session_id: String,
+    pub orchestrator_session_id: String,
+    pub plan_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionDagPayload {
+    pub selected_session_id: String,
+    pub primary: SessionDagGraph,
+    pub secondary: Option<SessionDagGraph>,
+    pub link: Option<CrossSessionLink>,
 }
