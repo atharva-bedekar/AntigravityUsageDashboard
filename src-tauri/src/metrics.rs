@@ -1,14 +1,16 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 
 use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, Timelike, Utc};
 
 use crate::models::{
-    AgentFilter, AppConfig, ConsistencyReport, CostBreakdown, DailyBucket, DashboardPayload,
-    FilterState, McpStatRow, ModelCatalogItem, ModelSwitchRecord, ModelUsageRow, ProjectSummary,
-    ScanResult, SessionDetailPayload, SessionKind, SessionRecord, SessionSummary,
-    SourceComparisonRow, SourceKind, StepPricedRow, StepRecord, SubscriptionComparison,
-    TimeGranularity, TimePeriod, TimeUsageBucket, TokenTotals, TokenUsageFilter, TokenUsagePayload,
-    TokenUsageTotals, ToolStatRow,
+    AgentFilter, AppConfig, ConsistencyReport, CostBreakdown, CrossSessionLink, DailyBucket,
+    DagEdge, DagNode, DashboardPayload, FilterState, McpStatRow, ModelCatalogItem,
+    ModelSwitchRecord, ModelUsageRow, ProjectSummary, ScanResult, SessionDagGraph,
+    SessionDagPayload, SessionDetailPayload, SessionKind, SessionLinkDirection,
+    SessionOverviewRow, SessionRecord, SessionRole, SessionSummary, SessionsFilter,
+    SessionsOverviewPayload, SourceComparisonRow, SourceKind, StepPricedRow, StepRecord,
+    SubscriptionComparison, TimeGranularity, TimePeriod, TimeUsageBucket, TokenTotals,
+    TokenUsageFilter, TokenUsagePayload, TokenUsageTotals, ToolStatRow,
 };
 use crate::pricing::Catalog;
 use crate::scanner::transcript::parse_iso_ts;
@@ -1511,6 +1513,871 @@ pub fn build_token_usage_at(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Sessions Overview, Role Classification, Cross-Session Linking & DAG Builder
+// ---------------------------------------------------------------------------
+
+fn step_in_period_window(
+    period: TimePeriod,
+    scaffold: &WindowScaffold,
+    st: &StepRecord,
+    session: &SessionRecord,
+) -> bool {
+    let step_ts = st
+        .created_at
+        .as_deref()
+        .and_then(parse_iso_ts)
+        .map(|dt| dt.with_timezone(&Utc));
+    let Some(bucket_key) = step_bucket_key(period, scaffold, st, session, step_ts) else {
+        return false;
+    };
+    scaffold.bucket_index.contains_key(&bucket_key)
+}
+
+fn collect_descendant_ids(
+    root_id: &str,
+    children_map: &HashMap<&str, Vec<&SessionRecord>>,
+) -> Vec<String> {
+    let mut descendants = Vec::new();
+    let mut visited: HashSet<&str> = HashSet::new();
+    visited.insert(root_id);
+    let mut queue = VecDeque::new();
+    queue.push_back(root_id);
+
+    while let Some(cur) = queue.pop_front() {
+        if let Some(children) = children_map.get(cur) {
+            for child in children {
+                if visited.insert(child.session_id.as_str()) {
+                    descendants.push(child.session_id.clone());
+                    queue.push_back(child.session_id.as_str());
+                }
+            }
+        }
+    }
+    descendants
+}
+
+fn compute_session_wall_time(
+    steps: &[StepRecord],
+    in_window: impl Fn(&StepRecord) -> bool,
+) -> u64 {
+    let mut prev_ts: Option<DateTime<Utc>> = None;
+    let mut total_wall = 0u64;
+
+    for st in steps {
+        let step_ts = st
+            .created_at
+            .as_deref()
+            .and_then(parse_iso_ts)
+            .map(|dt| dt.with_timezone(&Utc));
+
+        let wall = match (prev_ts, step_ts) {
+            (Some(prev), Some(cur)) if cur >= prev => {
+                let delta = (cur - prev).num_seconds();
+                if delta <= WALL_TIME_GAP_CAP_SECS {
+                    delta as u64
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        };
+        prev_ts = step_ts;
+
+        if in_window(st) {
+            total_wall += wall;
+        }
+    }
+
+    total_wall
+}
+
+fn summarize_session_models(steps: &[StepRecord]) -> String {
+    let mut seen: HashSet<&str> = HashSet::new();
+    let mut recorded: Vec<&str> = Vec::new();
+
+    for st in steps {
+        let label = effective_model_label(&st.observed_model);
+        if label != "Unrecorded" && seen.insert(label) {
+            recorded.push(label);
+        }
+    }
+
+    if recorded.is_empty() {
+        "Unrecorded".to_string()
+    } else {
+        recorded.join(", ")
+    }
+}
+
+fn classify_session_role(
+    session: &SessionRecord,
+    direct_child_agent_types: &[&str],
+) -> SessionRole {
+    let has_exec_child = direct_child_agent_types.iter().any(|t| {
+        let lower = t.trim().to_ascii_lowercase();
+        matches!(lower.as_str(), "implementer" | "code-reviewer" | "verifier")
+    });
+    if has_exec_child {
+        return SessionRole::Orchestrator;
+    }
+
+    let has_plan_critic = direct_child_agent_types
+        .iter()
+        .any(|t| t.trim().eq_ignore_ascii_case("plan-critic"));
+    if !session.written_plan_paths.is_empty() || has_plan_critic {
+        return SessionRole::Planner;
+    }
+
+    let written_set: HashSet<String> = session
+        .written_plan_paths
+        .iter()
+        .map(|p| p.replace('\\', "/").to_ascii_lowercase())
+        .collect();
+    let has_referenced_plan = session.referenced_plan_paths.iter().any(|p| {
+        let norm = p.replace('\\', "/").to_ascii_lowercase();
+        norm.starts_with("docs/superpowers/plans/") && !written_set.contains(&norm)
+    });
+    if has_referenced_plan {
+        return SessionRole::Orchestrator;
+    }
+
+    SessionRole::Main
+}
+
+#[derive(Debug, Clone)]
+struct LinkMeta {
+    linked_session_id: String,
+    link_direction: SessionLinkDirection,
+    linked_plan_name: String,
+}
+
+fn extract_canonical_plan_key(raw_path: &str) -> Option<(String, String)> {
+    let norm = raw_path.replace('\\', "/");
+    let lower = norm.to_ascii_lowercase();
+    let idx = lower
+        .find("docs/superpowers/plans/")
+        .or_else(|| lower.find("docs/superpowers/specs/"))?;
+    let canonical_lower = lower[idx..].to_string();
+    let canonical_orig = &norm[idx..];
+    let basename = canonical_orig.rsplit('/').next()?.to_string();
+    if !canonical_lower.ends_with(".md") || basename.is_empty() {
+        return None;
+    }
+    Some((canonical_lower, basename))
+}
+
+fn strip_plan_stem(filename: &str) -> Option<String> {
+    let lower = filename.to_ascii_lowercase();
+    let b = lower.as_bytes();
+    if b.len() < 11 {
+        return None;
+    }
+    let has_date_prefix = b[0..4].iter().all(u8::is_ascii_digit)
+        && b[4] == b'-'
+        && b[5..7].iter().all(u8::is_ascii_digit)
+        && b[7] == b'-'
+        && b[8..10].iter().all(u8::is_ascii_digit)
+        && b[10] == b'-';
+    if !has_date_prefix {
+        return None;
+    }
+
+    let stripped = if let Some(s) = lower.strip_suffix("-design.md") {
+        s
+    } else if let Some(s) = lower.strip_suffix("-spec.md") {
+        s
+    } else if let Some(s) = lower.strip_suffix("-plan.md") {
+        s
+    } else if let Some(s) = lower.strip_suffix(".md") {
+        s
+    } else {
+        return None;
+    };
+
+    if stripped.is_empty() {
+        None
+    } else {
+        Some(stripped.to_string())
+    }
+}
+
+fn session_anchor_ts(session: &SessionRecord) -> Option<DateTime<Utc>> {
+    session
+        .first_utc
+        .as_deref()
+        .and_then(parse_iso_ts)
+        .or_else(|| session.last_utc.as_deref().and_then(parse_iso_ts))
+        .map(|dt| dt.with_timezone(&Utc))
+}
+
+fn session_first_ts(session: &SessionRecord) -> Option<DateTime<Utc>> {
+    session
+        .first_utc
+        .as_deref()
+        .and_then(parse_iso_ts)
+        .map(|dt| dt.with_timezone(&Utc))
+}
+
+fn session_end_ts(session: &SessionRecord) -> Option<DateTime<Utc>> {
+    session
+        .last_utc
+        .as_deref()
+        .and_then(parse_iso_ts)
+        .or_else(|| session.first_utc.as_deref().and_then(parse_iso_ts))
+        .map(|dt| dt.with_timezone(&Utc))
+}
+
+struct SessionPlanKeys {
+    exact: BTreeMap<String, String>,
+    stems: BTreeMap<String, (String, String)>, // stem -> (canonical_lower, basename)
+}
+
+fn build_session_plan_keys(session: &SessionRecord) -> SessionPlanKeys {
+    let mut exact = BTreeMap::new();
+    let mut stems: BTreeMap<String, (String, String)> = BTreeMap::new();
+
+    for path in session
+        .written_plan_paths
+        .iter()
+        .chain(session.referenced_plan_paths.iter())
+    {
+        if let Some((canonical, basename)) = extract_canonical_plan_key(path) {
+            if let Some(stem) = strip_plan_stem(&basename) {
+                let is_plan = canonical.starts_with("docs/superpowers/plans/")
+                    || basename.to_ascii_lowercase().ends_with("-plan.md");
+                match stems.get(&stem) {
+                    Some((existing_can, existing_base)) => {
+                        let existing_is_plan = existing_can.starts_with("docs/superpowers/plans/")
+                            || existing_base.to_ascii_lowercase().ends_with("-plan.md");
+                        if is_plan && !existing_is_plan {
+                            stems.insert(stem, (canonical.clone(), basename.clone()));
+                        }
+                    }
+                    None => {
+                        stems.insert(stem, (canonical.clone(), basename.clone()));
+                    }
+                }
+            }
+            exact.entry(canonical).or_insert(basename);
+        }
+    }
+
+    SessionPlanKeys { exact, stems }
+}
+
+fn link_planner_orchestrator_sessions(
+    main_sessions: &[&SessionRecord],
+    roles: &HashMap<&str, SessionRole>,
+) -> HashMap<String, LinkMeta> {
+    let mut planners: Vec<(&SessionRecord, SessionPlanKeys, Option<DateTime<Utc>>)> = Vec::new();
+    let mut orchestrators: Vec<(&SessionRecord, SessionPlanKeys, Option<DateTime<Utc>>)> =
+        Vec::new();
+
+    for &s in main_sessions {
+        let role = roles
+            .get(s.session_id.as_str())
+            .copied()
+            .unwrap_or(SessionRole::Main);
+        match role {
+            SessionRole::Planner => {
+                let keys = build_session_plan_keys(s);
+                if !keys.exact.is_empty() || !keys.stems.is_empty() {
+                    planners.push((s, keys, session_anchor_ts(s)));
+                }
+            }
+            SessionRole::Orchestrator => {
+                let keys = build_session_plan_keys(s);
+                if !keys.exact.is_empty() || !keys.stems.is_empty() {
+                    orchestrators.push((s, keys, session_anchor_ts(s)));
+                }
+            }
+            SessionRole::Main => {}
+        }
+    }
+
+    #[derive(Clone)]
+    struct CandidateLink<'a> {
+        planner_id: &'a str,
+        orchestrator_id: &'a str,
+        tier: u8, // 0 = exact canonical match, 1 = stem match
+        ts_rank: u8,
+        gap_secs: i64,
+        orch_ts_secs: i64,
+        plan_name: String,
+    }
+
+    let mut candidates: Vec<CandidateLink> = Vec::new();
+
+    for (orch, o_keys, o_ts) in &orchestrators {
+        for (planner, p_keys, p_ts) in &planners {
+            let (ts_rank, gap_secs) = match (*p_ts, *o_ts) {
+                (Some(p), Some(o)) => {
+                    if p > o {
+                        continue;
+                    }
+                    (0u8, (o - p).num_seconds())
+                }
+                _ => (1u8, i64::MAX),
+            };
+
+            let matched = o_keys
+                .exact
+                .iter()
+                .find_map(|(k, basename)| {
+                    p_keys
+                        .exact
+                        .contains_key(k)
+                        .then(|| (0u8, basename.clone()))
+                })
+                .or_else(|| {
+                    o_keys.stems.iter().find_map(|(stem, (o_can, o_base))| {
+                        p_keys.stems.get(stem).map(|(_p_can, p_base)| {
+                            let o_is_plan = o_can.starts_with("docs/superpowers/plans/")
+                                || o_base.to_ascii_lowercase().ends_with("-plan.md");
+                            let p_is_plan = p_base.to_ascii_lowercase().ends_with("-plan.md");
+                            let chosen = if o_is_plan {
+                                o_base.clone()
+                            } else if p_is_plan {
+                                p_base.clone()
+                            } else {
+                                o_base.clone()
+                            };
+                            (1u8, chosen)
+                        })
+                    })
+                });
+
+            if let Some((tier, plan_name)) = matched {
+                candidates.push(CandidateLink {
+                    planner_id: planner.session_id.as_str(),
+                    orchestrator_id: orch.session_id.as_str(),
+                    tier,
+                    ts_rank,
+                    gap_secs,
+                    orch_ts_secs: o_ts.map_or(i64::MAX, |dt| dt.timestamp()),
+                    plan_name,
+                });
+            }
+        }
+    }
+
+    candidates.sort_by(|a, b| {
+        a.tier
+            .cmp(&b.tier)
+            .then_with(|| a.ts_rank.cmp(&b.ts_rank))
+            .then_with(|| a.gap_secs.cmp(&b.gap_secs))
+            .then_with(|| a.orch_ts_secs.cmp(&b.orch_ts_secs))
+            .then_with(|| a.orchestrator_id.cmp(b.orchestrator_id))
+            .then_with(|| a.planner_id.cmp(b.planner_id))
+    });
+
+    let mut used_planners: HashSet<&str> = HashSet::new();
+    let mut used_orchestrators: HashSet<&str> = HashSet::new();
+    let mut links: HashMap<String, LinkMeta> = HashMap::new();
+
+    for c in candidates {
+        if used_planners.contains(c.planner_id) || used_orchestrators.contains(c.orchestrator_id) {
+            continue;
+        }
+        used_planners.insert(c.planner_id);
+        used_orchestrators.insert(c.orchestrator_id);
+
+        links.insert(
+            c.planner_id.to_string(),
+            LinkMeta {
+                linked_session_id: c.orchestrator_id.to_string(),
+                link_direction: SessionLinkDirection::ToOrchestrator,
+                linked_plan_name: c.plan_name.clone(),
+            },
+        );
+        links.insert(
+            c.orchestrator_id.to_string(),
+            LinkMeta {
+                linked_session_id: c.planner_id.to_string(),
+                link_direction: SessionLinkDirection::FromPlanner,
+                linked_plan_name: c.plan_name,
+            },
+        );
+    }
+
+    links
+}
+
+fn build_session_index_and_roles(
+    scan: &ScanResult,
+) -> (
+    HashMap<&str, &SessionRecord>,
+    HashMap<&str, Vec<&SessionRecord>>,
+    Vec<&SessionRecord>,
+    HashMap<&str, SessionRole>,
+    HashMap<String, LinkMeta>,
+) {
+    let mut session_by_id: HashMap<&str, &SessionRecord> = HashMap::new();
+    let mut children_map: HashMap<&str, Vec<&SessionRecord>> = HashMap::new();
+    let mut main_sessions: Vec<&SessionRecord> = Vec::new();
+
+    for s in &scan.sessions {
+        session_by_id.insert(s.session_id.as_str(), s);
+        if s.kind == SessionKind::Main {
+            main_sessions.push(s);
+        }
+        if let Some(pid) = s.parent_id.as_deref() {
+            children_map.entry(pid).or_default().push(s);
+        }
+    }
+
+    let mut roles: HashMap<&str, SessionRole> = HashMap::new();
+    for &main in &main_sessions {
+        let child_types: Vec<&str> = children_map
+            .get(main.session_id.as_str())
+            .map(|kids| {
+                kids.iter()
+                    .filter_map(|k| k.agent_type.as_deref())
+                    .collect()
+            })
+            .unwrap_or_default();
+        roles.insert(
+            main.session_id.as_str(),
+            classify_session_role(main, &child_types),
+        );
+    }
+
+    let links = link_planner_orchestrator_sessions(&main_sessions, &roles);
+    (session_by_id, children_map, main_sessions, roles, links)
+}
+
+/// Build the Sessions overview payload using the current local time.
+pub fn build_sessions_overview(
+    scan: &ScanResult,
+    filter: &SessionsFilter,
+) -> SessionsOverviewPayload {
+    build_sessions_overview_at(scan, filter, Local::now())
+}
+
+/// Build the Sessions overview payload evaluated at a specific local timestamp.
+pub fn build_sessions_overview_at(
+    scan: &ScanResult,
+    filter: &SessionsFilter,
+    now: DateTime<Local>,
+) -> SessionsOverviewPayload {
+    let (session_by_id, children_map, main_sessions, roles, links) =
+        build_session_index_and_roles(scan);
+
+    let mut projects_set: BTreeSet<String> = BTreeSet::new();
+    for &s in &main_sessions {
+        if s.calls > 0 && !s.project.is_empty() {
+            projects_set.insert(s.project.clone());
+        }
+    }
+    let available_projects: Vec<String> = projects_set.into_iter().collect();
+
+    let matching_mains: Vec<&SessionRecord> = main_sessions
+        .iter()
+        .copied()
+        .filter(|s| {
+            filter
+                .project
+                .as_deref()
+                .map_or(true, |proj| proj.is_empty() || s.project == proj)
+        })
+        .collect();
+
+    let mut family_map: HashMap<&str, Vec<String>> = HashMap::new();
+    let mut scaffold_seen: HashSet<&str> = HashSet::new();
+    let mut scaffold_sessions: Vec<&SessionRecord> = Vec::new();
+
+    for &main in &matching_mains {
+        if scaffold_seen.insert(main.session_id.as_str()) {
+            scaffold_sessions.push(main);
+        }
+        let desc_ids = collect_descendant_ids(&main.session_id, &children_map);
+        for did in &desc_ids {
+            if let Some(&child) = session_by_id.get(did.as_str()) {
+                if scaffold_seen.insert(child.session_id.as_str()) {
+                    scaffold_sessions.push(child);
+                }
+            }
+        }
+        family_map.insert(main.session_id.as_str(), desc_ids);
+    }
+
+    let scaffold = build_window_scaffold(filter.period, now, &scaffold_sessions);
+    let mut rows: Vec<SessionOverviewRow> = Vec::new();
+
+    for &main in &matching_mains {
+        let desc_ids = family_map
+            .get(main.session_id.as_str())
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        let subagent_count = desc_ids.len() as u64;
+
+        let mut family_records: Vec<&SessionRecord> = Vec::with_capacity(1 + desc_ids.len());
+        family_records.push(main);
+        for did in desc_ids {
+            if let Some(&child) = session_by_id.get(did.as_str()) {
+                family_records.push(child);
+            }
+        }
+
+        let mut fresh_in = 0u64;
+        let mut cached = 0u64;
+        let mut output = 0u64;
+        let mut calls = 0u64;
+        let mut wall_time_secs = 0u64;
+
+        for member in family_records {
+            for st in &member.steps {
+                if st.has_tokens && step_in_period_window(filter.period, &scaffold, st, member) {
+                    fresh_in += st.fresh_in;
+                    cached += st.cached;
+                    output += st.output;
+                    calls += 1;
+                }
+            }
+            wall_time_secs += compute_session_wall_time(&member.steps, |st| {
+                step_in_period_window(filter.period, &scaffold, st, member)
+            });
+        }
+
+        if calls == 0 && wall_time_secs == 0 {
+            continue;
+        }
+
+        let total = fresh_in + cached + output;
+        let cache_hit_rate = safe_div(cached as f64, (fresh_in + cached) as f64, 0.0);
+        let role = roles
+            .get(main.session_id.as_str())
+            .copied()
+            .unwrap_or(SessionRole::Main);
+        let link = links.get(&main.session_id);
+
+        rows.push(SessionOverviewRow {
+            session_id: main.session_id.clone(),
+            title: main.title.clone(),
+            project: main.project.clone(),
+            source: main.source.clone(),
+            role,
+            subagent_count,
+            fresh_in,
+            cached,
+            output,
+            total,
+            cache_hit_rate,
+            wall_time_secs,
+            calls,
+            first_utc: main.first_utc.clone(),
+            last_utc: main.last_utc.clone(),
+            linked_session_id: link.map(|l| l.linked_session_id.clone()),
+            link_direction: link.map(|l| l.link_direction),
+            linked_plan_name: link.map(|l| l.linked_plan_name.clone()),
+        });
+    }
+
+    rows.sort_by(|a, b| {
+        b.total
+            .cmp(&a.total)
+            .then_with(|| b.last_utc.cmp(&a.last_utc))
+            .then_with(|| a.session_id.cmp(&b.session_id))
+    });
+
+    SessionsOverviewPayload {
+        filter: filter.clone(),
+        window_start: scaffold.window_start,
+        window_end: scaffold.window_end,
+        available_projects,
+        sessions: rows,
+    }
+}
+
+fn sort_subagents_chronologically<'a>(subs: &mut Vec<&'a SessionRecord>) {
+    subs.sort_by(|a, b| {
+        let a_step = a.spawn_step_index.unwrap_or(i64::MAX);
+        let b_step = b.spawn_step_index.unwrap_or(i64::MAX);
+        a_step
+            .cmp(&b_step)
+            .then_with(|| match (session_first_ts(a), session_first_ts(b)) {
+                (Some(x), Some(y)) => x.cmp(&y),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            })
+            .then_with(|| a.session_id.cmp(&b.session_id))
+    });
+}
+
+fn build_dag_node_from_session(
+    session: &SessionRecord,
+    parent_node_id: Option<String>,
+    is_root: bool,
+    wave_index: u32,
+    agent_type: String,
+    role_label: String,
+    message_turns: u64,
+) -> DagNode {
+    let wall_time_secs = if session.steps.is_empty() {
+        session.duration_secs
+    } else {
+        compute_session_wall_time(&session.steps, |_| true)
+    };
+    DagNode {
+        node_id: session.session_id.clone(),
+        session_id: session.session_id.clone(),
+        parent_node_id,
+        is_root,
+        wave_index,
+        agent_type,
+        role_label,
+        model: summarize_session_models(&session.steps),
+        fresh_in: session.fresh_in,
+        cached: session.cached,
+        output: session.output,
+        total: session.total,
+        cache_hit_rate: safe_div(
+            session.cached as f64,
+            (session.fresh_in + session.cached) as f64,
+            0.0,
+        ),
+        wall_time_secs,
+        calls: session.calls,
+        tool_call_count: session.tool_call_count,
+        message_turns,
+    }
+}
+
+fn push_subagent_node_and_edges(
+    parent: &SessionRecord,
+    child: &SessionRecord,
+    wave_index: u32,
+    nodes: &mut Vec<DagNode>,
+    edges: &mut Vec<DagEdge>,
+) {
+    let turns = parent
+        .message_turns
+        .get(&child.session_id)
+        .copied()
+        .unwrap_or(0);
+    let agent_type = child
+        .agent_type
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("Subagent")
+        .to_string();
+    let role_label = child
+        .role
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .unwrap_or(&child.title)
+        .to_string();
+
+    nodes.push(build_dag_node_from_session(
+        child,
+        Some(parent.session_id.clone()),
+        false,
+        wave_index,
+        agent_type,
+        role_label,
+        turns,
+    ));
+
+    edges.push(DagEdge {
+        from_node_id: parent.session_id.clone(),
+        to_node_id: child.session_id.clone(),
+        kind: "dispatch".to_string(),
+        message_turns: turns,
+    });
+    if turns > 0 {
+        edges.push(DagEdge {
+            from_node_id: child.session_id.clone(),
+            to_node_id: parent.session_id.clone(),
+            kind: "feedback".to_string(),
+            message_turns: turns,
+        });
+    }
+}
+
+fn build_session_dag_graph(
+    root: &SessionRecord,
+    role: SessionRole,
+    children_map: &HashMap<&str, Vec<&SessionRecord>>,
+) -> SessionDagGraph {
+    let root_agent_type = match role {
+        SessionRole::Planner => "Planner",
+        SessionRole::Orchestrator => "Orchestrator",
+        SessionRole::Main => "Main Agent",
+    }
+    .to_string();
+
+    let mut nodes: Vec<DagNode> = Vec::new();
+    let mut edges: Vec<DagEdge> = Vec::new();
+    let mut visited: HashSet<&str> = HashSet::new();
+    visited.insert(root.session_id.as_str());
+
+    nodes.push(build_dag_node_from_session(
+        root,
+        None,
+        true,
+        0,
+        root_agent_type,
+        root.title.clone(),
+        0,
+    ));
+
+    let mut direct_children: Vec<&SessionRecord> = children_map
+        .get(root.session_id.as_str())
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|c| visited.insert(c.session_id.as_str()))
+        .collect();
+    sort_subagents_chronologically(&mut direct_children);
+
+    let all_timestamps_missing = direct_children
+        .iter()
+        .all(|c| session_first_ts(c).is_none() && session_end_ts(c).is_none());
+
+    let mut bfs_queue: VecDeque<(&SessionRecord, u32)> = VecDeque::new();
+    let mut current_wave: u32 = 1;
+    let mut prev_spawn_step: Option<i64> = None;
+    let mut wave_max_last: Option<DateTime<Utc>> = None;
+
+    for (idx, child) in direct_children.iter().enumerate() {
+        let cur_first = session_first_ts(child);
+        let cur_end = session_end_ts(child);
+
+        if idx == 0 {
+            current_wave = 1;
+            wave_max_last = cur_end;
+        } else {
+            let same_wave = match (prev_spawn_step, child.spawn_step_index) {
+                (Some(p_step), Some(c_step)) => p_step == c_step,
+                _ => {
+                    if all_timestamps_missing {
+                        true
+                    } else {
+                        match (cur_first, wave_max_last) {
+                            (Some(cf), Some(wml)) => cf <= wml,
+                            _ => false,
+                        }
+                    }
+                }
+            };
+
+            if !same_wave {
+                current_wave += 1;
+                wave_max_last = cur_end;
+            } else if let Some(end) = cur_end {
+                wave_max_last = Some(wave_max_last.map_or(end, |m| m.max(end)));
+            }
+        }
+        prev_spawn_step = child.spawn_step_index;
+
+        push_subagent_node_and_edges(root, child, current_wave, &mut nodes, &mut edges);
+        bfs_queue.push_back((child, current_wave));
+    }
+
+    while let Some((parent, parent_wave)) = bfs_queue.pop_front() {
+        let mut nested: Vec<&SessionRecord> = children_map
+            .get(parent.session_id.as_str())
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|c| visited.insert(c.session_id.as_str()))
+            .collect();
+        sort_subagents_chronologically(&mut nested);
+
+        let child_wave = parent_wave + 1;
+        for child in nested {
+            push_subagent_node_and_edges(parent, child, child_wave, &mut nodes, &mut edges);
+            bfs_queue.push_back((child, child_wave));
+        }
+    }
+
+    let wave_count = nodes.iter().map(|n| n.wave_index).max().unwrap_or(0);
+
+    SessionDagGraph {
+        session_id: root.session_id.clone(),
+        title: root.title.clone(),
+        project: root.project.clone(),
+        role,
+        wave_count,
+        nodes,
+        edges,
+    }
+}
+
+/// Build the orchestration DAG payload for a session (resolving subagents to their root Main ancestor).
+pub fn build_session_dag(scan: &ScanResult, session_id: &str) -> Result<SessionDagPayload, String> {
+    let (session_by_id, children_map, _main_sessions, roles, links) =
+        build_session_index_and_roles(scan);
+
+    let mut cur = *session_by_id
+        .get(session_id)
+        .ok_or_else(|| format!("Session not found: {session_id}"))?;
+    let mut visited: HashSet<&str> = HashSet::new();
+    visited.insert(cur.session_id.as_str());
+
+    while cur.kind != SessionKind::Main {
+        let Some(pid) = cur.parent_id.as_deref() else {
+            return Err(format!("Root main session not found for: {session_id}"));
+        };
+        let parent = *session_by_id
+            .get(pid)
+            .ok_or_else(|| format!("Parent session not found: {pid}"))?;
+        if !visited.insert(parent.session_id.as_str()) {
+            return Err(format!(
+                "Cycle detected while resolving root session for: {session_id}"
+            ));
+        }
+        cur = parent;
+    }
+
+    let root = cur;
+    let root_role = roles
+        .get(root.session_id.as_str())
+        .copied()
+        .unwrap_or(SessionRole::Main);
+
+    if let Some(link_meta) = links.get(&root.session_id) {
+        if let Some(&counterpart) = session_by_id.get(link_meta.linked_session_id.as_str()) {
+            let counterpart_role = roles
+                .get(counterpart.session_id.as_str())
+                .copied()
+                .unwrap_or(SessionRole::Main);
+            let (planner, planner_role, orchestrator, orchestrator_role) =
+                match link_meta.link_direction {
+                    SessionLinkDirection::ToOrchestrator => {
+                        (root, root_role, counterpart, counterpart_role)
+                    }
+                    SessionLinkDirection::FromPlanner => {
+                        (counterpart, counterpart_role, root, root_role)
+                    }
+                };
+            return Ok(SessionDagPayload {
+                selected_session_id: session_id.to_string(),
+                primary: build_session_dag_graph(planner, planner_role, &children_map),
+                secondary: Some(build_session_dag_graph(
+                    orchestrator,
+                    orchestrator_role,
+                    &children_map,
+                )),
+                link: Some(CrossSessionLink {
+                    planner_session_id: planner.session_id.clone(),
+                    orchestrator_session_id: orchestrator.session_id.clone(),
+                    plan_name: link_meta.linked_plan_name.clone(),
+                }),
+            });
+        }
+    }
+
+    Ok(SessionDagPayload {
+        selected_session_id: session_id.to_string(),
+        primary: build_session_dag_graph(root, root_role, &children_map),
+        secondary: None,
+        link: None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2093,5 +2960,539 @@ mod tests {
             .unwrap();
         assert_eq!(wall_row.calls, 0);
         assert_eq!(wall_row.wall_time_secs, 15);
+    }
+
+    #[test]
+    fn sessions_overview_rolls_up_subagents_filters_and_sorts_by_total_desc() {
+        let now = Local.with_ymd_and_hms(2026, 11, 22, 17, 0, 0).unwrap();
+        let t_in_0 = Local.with_ymd_and_hms(2026, 11, 22, 10, 0, 0).unwrap().to_rfc3339();
+        let t_in_1 = Local.with_ymd_and_hms(2026, 11, 22, 10, 5, 0).unwrap().to_rfc3339(); // +300s
+        let t_sub_0 = Local.with_ymd_and_hms(2026, 11, 22, 10, 6, 0).unwrap().to_rfc3339();
+        let t_sub_1 = Local.with_ymd_and_hms(2026, 11, 22, 10, 8, 0).unwrap().to_rfc3339(); // +120s
+        let t_sub_gap = Local.with_ymd_and_hms(2026, 11, 22, 11, 0, 0).unwrap().to_rfc3339(); // >1800s -> 0
+        let t_grand_0 = Local.with_ymd_and_hms(2026, 11, 22, 10, 7, 0).unwrap().to_rfc3339();
+        let t_grand_1 = Local.with_ymd_and_hms(2026, 11, 22, 10, 7, 30).unwrap().to_rfc3339(); // +30s
+        let t_old = Local.with_ymd_and_hms(2026, 11, 1, 10, 0, 0).unwrap().to_rfc3339(); // outside 1w
+
+        // Alpha main session with 1 direct subagent + 1 nested grandchild subagent
+        let mut s_alpha = make_test_session(
+            "main-alpha",
+            SessionKind::Main,
+            "alpha",
+            None,
+            Some("2026-11-22"),
+            vec![
+                make_test_step(0, Some(t_old.clone()), Some("2026-11-01"), "gemini-flash", 9999, 0, 0, true),
+                make_test_step(1, Some(t_in_0.clone()), Some("2026-11-22"), "gemini-flash", 100, 300, 50, true),
+                make_test_step(2, Some(t_in_1.clone()), Some("2026-11-22"), "gemini-flash", 50, 50, 20, true),
+            ],
+        );
+        s_alpha.first_utc = Some(t_in_0.clone());
+        s_alpha.last_utc = Some(t_in_1.clone());
+
+        let mut s_sub = make_test_session(
+            "sub-alpha-1",
+            SessionKind::Subagent,
+            "alpha",
+            Some("explorer"),
+            Some("2026-11-22"),
+            vec![
+                make_test_step(0, Some(t_sub_0.clone()), Some("2026-11-22"), "claude-sonnet", 200, 200, 30, true),
+                make_test_step(1, Some(t_sub_1.clone()), Some("2026-11-22"), "claude-sonnet", 0, 0, 0, false),
+                make_test_step(2, Some(t_sub_gap), Some("2026-11-22"), "claude-sonnet", 50, 0, 10, true),
+            ],
+        );
+        s_sub.parent_id = Some("main-alpha".to_string());
+
+        let mut s_grand = make_test_session(
+            "sub-alpha-grand",
+            SessionKind::Subagent,
+            "alpha",
+            Some("researcher"),
+            Some("2026-11-22"),
+            vec![
+                make_test_step(0, Some(t_grand_0), Some("2026-11-22"), "gemini-flash", 40, 60, 10, true),
+                make_test_step(1, Some(t_grand_1), Some("2026-11-22"), "gemini-flash", 0, 0, 0, false),
+            ],
+        );
+        s_grand.parent_id = Some("sub-alpha-1".to_string());
+
+        // Beta main session with higher total so it sorts first when unfiltered
+        let mut s_beta = make_test_session(
+            "main-beta",
+            SessionKind::Main,
+            "beta",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t_in_0), Some("2026-11-22"), "gemini-flash", 1000, 2000, 500, true)],
+        );
+        s_beta.last_utc = Some(t_in_1);
+
+        // Zero-activity main session in-period (only old step)
+        let s_old_only = make_test_session(
+            "main-old-gamma",
+            SessionKind::Main,
+            "gamma",
+            None,
+            Some("2026-11-01"),
+            vec![make_test_step(0, Some(t_old), Some("2026-11-01"), "gemini-flash", 100, 0, 0, true)],
+        );
+
+        let scan = make_test_scan(vec![s_alpha, s_sub, s_grand, s_beta, s_old_only]);
+
+        // Unfiltered 1w: beta sorts before alpha; gamma omitted from rows, but all 3 main projects with calls>0 appear in available_projects
+        let all_payload = build_sessions_overview_at(
+            &scan,
+            &SessionsFilter {
+                period: TimePeriod::OneWeek,
+                project: None,
+            },
+            now,
+        );
+        assert_eq!(all_payload.available_projects, vec!["alpha", "beta", "gamma"]);
+        assert_eq!(all_payload.sessions.len(), 2);
+        assert_eq!(all_payload.sessions[0].session_id, "main-beta");
+        assert_eq!(all_payload.sessions[0].total, 3500);
+        assert_eq!(all_payload.sessions[1].session_id, "main-alpha");
+
+        let alpha_row = &all_payload.sessions[1];
+        assert_eq!(alpha_row.subagent_count, 2);
+        assert_eq!(alpha_row.fresh_in, 100 + 50 + 200 + 50 + 40);
+        assert_eq!(alpha_row.cached, 300 + 50 + 200 + 60);
+        assert_eq!(alpha_row.output, 50 + 20 + 30 + 10 + 10);
+        assert_eq!(alpha_row.total, 440 + 610 + 120);
+        assert_eq!(alpha_row.calls, 5);
+        assert_eq!(alpha_row.wall_time_secs, 300 + 120 + 30);
+        assert!((alpha_row.cache_hit_rate - (610.0 / (440.0 + 610.0))).abs() < 1e-12);
+
+        // Filtered by project "alpha": dropdown does NOT collapse!
+        let filtered_payload = build_sessions_overview_at(
+            &scan,
+            &SessionsFilter {
+                period: TimePeriod::OneWeek,
+                project: Some("alpha".to_string()),
+            },
+            now,
+        );
+        assert_eq!(filtered_payload.available_projects, vec!["alpha", "beta", "gamma"]);
+        assert_eq!(filtered_payload.sessions.len(), 1);
+        assert_eq!(filtered_payload.sessions[0].session_id, "main-alpha");
+    }
+
+    #[test]
+    fn sessions_overview_classifies_and_links_planner_to_orchestrator() {
+        let now = Local.with_ymd_and_hms(2026, 11, 22, 18, 0, 0).unwrap();
+        let ts_p_early = Local.with_ymd_and_hms(2026, 11, 22, 9, 0, 0).unwrap().to_rfc3339();
+        let ts_p_close = Local.with_ymd_and_hms(2026, 11, 22, 11, 0, 0).unwrap().to_rfc3339();
+        let ts_orch = Local.with_ymd_and_hms(2026, 11, 22, 12, 0, 0).unwrap().to_rfc3339();
+        let ts_p_after = Local.with_ymd_and_hms(2026, 11, 22, 15, 0, 0).unwrap().to_rfc3339();
+
+        // Older planner sharing exact plan (further in time than ts_p_close)
+        let mut p_early = make_test_session(
+            "planner-early",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_p_early.clone()), Some("2026-11-22"), "gemini-pro", 100, 0, 10, true)],
+        );
+        p_early.first_utc = Some(ts_p_early);
+        p_early.written_plan_paths = vec!["docs/superpowers/plans/2026-11-22-exact-feature-plan.md".to_string()];
+
+        // Closer preceding planner that ALSO read an older plan in referenced_plan_paths -> MUST remain Planner!
+        let mut p_close = make_test_session(
+            "planner-close",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_p_close.clone()), Some("2026-11-22"), "gemini-pro", 120, 0, 10, true)],
+        );
+        p_close.first_utc = Some(ts_p_close);
+        p_close.written_plan_paths = vec!["docs/superpowers/plans/2026-11-22-exact-feature-plan.md".to_string()];
+        p_close.referenced_plan_paths = vec!["docs/superpowers/plans/2026-11-01-older-unrelated-plan.md".to_string()];
+
+        // Orchestrator reading the exact plan (no written_plan_paths, no children -> classified via referenced_plan_paths)
+        let mut o_exact = make_test_session(
+            "orch-exact",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_orch.clone()), Some("2026-11-22"), "claude-sonnet", 200, 0, 20, true)],
+        );
+        o_exact.first_utc = Some(ts_orch.clone());
+        o_exact.referenced_plan_paths = vec!["docs/superpowers/plans/2026-11-22-exact-feature-plan.md".to_string()];
+
+        // Stem fallback: Planner with plan-critic child writing -design.md, Orchestrator with Implementer child referencing -plan.md
+        let mut p_stem = make_test_session(
+            "planner-stem",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_orch.clone()), Some("2026-11-22"), "gemini-pro", 150, 0, 10, true)],
+        );
+        p_stem.first_utc = None;
+        p_stem.last_utc = Some(ts_orch.clone());
+        p_stem.written_plan_paths = vec!["docs/superpowers/specs/2026-11-22-token-usage-ui-design.md".to_string()];
+
+        let mut c_critic = make_test_session(
+            "child-critic",
+            SessionKind::Subagent,
+            "proj",
+            Some("PLAN-CRITIC"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_orch.clone()), Some("2026-11-22"), "gemini-pro", 10, 0, 5, true)],
+        );
+        c_critic.parent_id = Some("planner-stem".to_string());
+
+        let mut o_stem = make_test_session(
+            "orch-stem",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_p_after.clone()), Some("2026-11-22"), "claude-sonnet", 300, 0, 30, true)],
+        );
+        o_stem.first_utc = None;
+        o_stem.last_utc = Some(ts_p_after.clone());
+        o_stem.referenced_plan_paths = vec!["docs/superpowers/plans/2026-11-22-token-usage-ui-plan.md".to_string()];
+
+        let mut c_impl = make_test_session(
+            "child-impl",
+            SessionKind::Subagent,
+            "proj",
+            Some("Implementer"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_p_after.clone()), Some("2026-11-22"), "claude-sonnet", 20, 0, 5, true)],
+        );
+        c_impl.parent_id = Some("orch-stem".to_string());
+
+        // Plain main session
+        let s_plain = make_test_session(
+            "plain-main",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(ts_p_after), Some("2026-11-22"), "gemini-flash", 50, 0, 5, true)],
+        );
+
+        let scan = make_test_scan(vec![
+            p_early, p_close, o_exact, p_stem, c_critic, o_stem, c_impl, s_plain,
+        ]);
+        let payload = build_sessions_overview_at(
+            &scan,
+            &SessionsFilter {
+                period: TimePeriod::OneWeek,
+                project: None,
+            },
+            now,
+        );
+
+        let by_id: HashMap<&str, &SessionOverviewRow> = payload
+            .sessions
+            .iter()
+            .map(|r| (r.session_id.as_str(), r))
+            .collect();
+
+        assert_eq!(by_id["planner-early"].role, SessionRole::Planner);
+        assert_eq!(by_id["planner-early"].linked_session_id, None);
+
+        assert_eq!(by_id["planner-close"].role, SessionRole::Planner);
+        assert_eq!(
+            by_id["planner-close"].linked_session_id.as_deref(),
+            Some("orch-exact")
+        );
+        assert_eq!(
+            by_id["planner-close"].link_direction,
+            Some(SessionLinkDirection::ToOrchestrator)
+        );
+        assert_eq!(
+            by_id["planner-close"].linked_plan_name.as_deref(),
+            Some("2026-11-22-exact-feature-plan.md")
+        );
+
+        assert_eq!(by_id["orch-exact"].role, SessionRole::Orchestrator);
+        assert_eq!(
+            by_id["orch-exact"].linked_session_id.as_deref(),
+            Some("planner-close")
+        );
+        assert_eq!(
+            by_id["orch-exact"].link_direction,
+            Some(SessionLinkDirection::FromPlanner)
+        );
+
+        // Stem fallback link
+        assert_eq!(by_id["planner-stem"].role, SessionRole::Planner);
+        assert_eq!(
+            by_id["planner-stem"].linked_session_id.as_deref(),
+            Some("orch-stem")
+        );
+        assert_eq!(
+            by_id["planner-stem"].linked_plan_name.as_deref(),
+            Some("2026-11-22-token-usage-ui-plan.md")
+        );
+        assert_eq!(by_id["orch-stem"].role, SessionRole::Orchestrator);
+        assert_eq!(
+            by_id["orch-stem"].linked_session_id.as_deref(),
+            Some("planner-stem")
+        );
+
+        assert_eq!(by_id["plain-main"].role, SessionRole::Main);
+        assert_eq!(by_id["plain-main"].linked_session_id, None);
+    }
+
+    #[test]
+    fn session_dag_groups_waves_extracts_feedback_and_handles_zero_and_nested_subagents() {
+        let t0 = "2026-11-22T10:00:00Z".to_string();
+        let t1 = "2026-11-22T10:05:00Z".to_string();
+        let t2 = "2026-11-22T10:02:00Z".to_string();
+        let t3 = "2026-11-22T10:07:00Z".to_string();
+        let t4 = "2026-11-22T10:10:00Z".to_string();
+        let t5 = "2026-11-22T10:15:00Z".to_string();
+
+        // 1. Zero-subagent Main session
+        let mut s_solo = make_test_session(
+            "solo-main",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0.clone()), Some("2026-11-22"), "gemini-flash", 10, 0, 5, true)],
+        );
+        s_solo.title = "Solo Task".to_string();
+
+        // 2. Orchestrator with multi-wave direct children + nested grandchild
+        let mut s_orch = make_test_session(
+            "orch-main",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0.clone()), Some("2026-11-22"), "claude-sonnet", 100, 0, 20, true)],
+        );
+        s_orch.title = "Build Feature".to_string();
+        s_orch.message_turns.insert("sub-w1-a".to_string(), 3);
+        s_orch.message_turns.insert("sub-w2".to_string(), 0);
+
+        // Wave 1 via shared spawn_step_index = 4
+        let mut sub_w1_a = make_test_session(
+            "sub-w1-a",
+            SessionKind::Subagent,
+            "proj",
+            Some("implementer"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0.clone()), Some("2026-11-22"), "gemini-flash", 50, 0, 10, true)],
+        );
+        sub_w1_a.parent_id = Some("orch-main".to_string());
+        sub_w1_a.spawn_step_index = Some(4);
+        sub_w1_a.role = Some("Task 1".to_string());
+
+        let mut sub_w1_b = make_test_session(
+            "sub-w1-b",
+            SessionKind::Subagent,
+            "proj",
+            Some("implementer"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0.clone()), Some("2026-11-22"), "", 40, 0, 10, true)],
+        );
+        sub_w1_b.parent_id = Some("orch-main".to_string());
+        sub_w1_b.spawn_step_index = Some(4);
+        sub_w1_b.role = Some("Task 2".to_string());
+
+        // Wave 2 via different spawn_step_index = 9, with overlapping timestamps for Wave 3 check
+        let mut sub_w2 = make_test_session(
+            "sub-w2",
+            SessionKind::Subagent,
+            "proj",
+            Some("code-reviewer"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0.clone()), Some("2026-11-22"), "claude-sonnet", 60, 0, 15, true)],
+        );
+        sub_w2.parent_id = Some("orch-main".to_string());
+        sub_w2.spawn_step_index = Some(9);
+        sub_w2.first_utc = Some(t0.clone());
+        sub_w2.last_utc = Some(t1.clone());
+
+        // Wave 2 overlap without spawn_step_index: [t2, t3] overlaps [t0, t1] -> stays in Wave 2!
+        let mut sub_w2_overlap = make_test_session(
+            "sub-w2-overlap",
+            SessionKind::Subagent,
+            "proj",
+            Some("verifier"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t2.clone()), Some("2026-11-22"), "gemini-flash", 30, 0, 5, true)],
+        );
+        sub_w2_overlap.parent_id = Some("orch-main".to_string());
+        sub_w2_overlap.first_utc = Some(t2);
+        sub_w2_overlap.last_utc = Some(t3);
+
+        // Wave 3 without spawn_step_index: [t4, t5] starts after wave_max_last (t3) -> Wave 3!
+        let mut sub_w3 = make_test_session(
+            "sub-w3",
+            SessionKind::Subagent,
+            "proj",
+            Some("verifier"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t4.clone()), Some("2026-11-22"), "gemini-flash", 20, 0, 5, true)],
+        );
+        sub_w3.parent_id = Some("orch-main".to_string());
+        sub_w3.first_utc = Some(t4);
+        sub_w3.last_utc = Some(t5);
+
+        // Nested grandchild under sub-w3 (wave 3) -> must attach at wave 4, making wave_count == 4!
+        let mut sub_nested = make_test_session(
+            "sub-nested-w4",
+            SessionKind::Subagent,
+            "proj",
+            Some("researcher"),
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some(t0), Some("2026-11-22"), "gemini-flash", 15, 0, 5, true)],
+        );
+        sub_nested.parent_id = Some("sub-w3".to_string());
+        sub_w3.message_turns.insert("sub-nested-w4".to_string(), 2);
+
+        // 3. No-timestamp subagents all placed in wave 1
+        let mut s_nots = make_test_session(
+            "nots-main",
+            SessionKind::Main,
+            "proj",
+            None,
+            None,
+            Vec::new(),
+        );
+        s_nots.title = "No Timestamps".to_string();
+        let mut s_nots_a = make_test_session("nots-a", SessionKind::Subagent, "proj", Some("explorer"), None, Vec::new());
+        s_nots_a.parent_id = Some("nots-main".to_string());
+        let mut s_nots_b = make_test_session("nots-b", SessionKind::Subagent, "proj", Some("explorer"), None, Vec::new());
+        s_nots_b.parent_id = Some("nots-main".to_string());
+
+        let scan = make_test_scan(vec![
+            s_solo,
+            s_orch,
+            sub_w1_a,
+            sub_w1_b,
+            sub_w2,
+            sub_w2_overlap,
+            sub_w3,
+            sub_nested,
+            s_nots,
+            s_nots_a,
+            s_nots_b,
+        ]);
+
+        // Error on unknown session
+        assert!(build_session_dag(&scan, "missing-id").is_err());
+
+        // Zero subagents
+        let solo_dag = build_session_dag(&scan, "solo-main").unwrap();
+        assert_eq!(solo_dag.primary.wave_count, 0);
+        assert_eq!(solo_dag.primary.nodes.len(), 1);
+        assert!(solo_dag.primary.edges.is_empty());
+        assert_eq!(solo_dag.primary.nodes[0].agent_type, "Main Agent");
+        assert_eq!(solo_dag.primary.nodes[0].role_label, "Solo Task");
+        assert!(solo_dag.secondary.is_none());
+        assert!(solo_dag.link.is_none());
+
+        // Querying by nested subagent ID resolves to root orch-main
+        let orch_dag = build_session_dag(&scan, "sub-nested-w4").unwrap();
+        assert_eq!(orch_dag.selected_session_id, "sub-nested-w4");
+        assert_eq!(orch_dag.primary.session_id, "orch-main");
+        assert_eq!(orch_dag.primary.role, SessionRole::Orchestrator);
+        assert_eq!(orch_dag.primary.wave_count, 4);
+
+        let node_by_id: HashMap<&str, &DagNode> = orch_dag
+            .primary
+            .nodes
+            .iter()
+            .map(|n| (n.session_id.as_str(), n))
+            .collect();
+        assert_eq!(node_by_id["orch-main"].wave_index, 0);
+        assert_eq!(node_by_id["orch-main"].agent_type, "Orchestrator");
+        assert_eq!(node_by_id["orch-main"].role_label, "Build Feature");
+        assert_eq!(node_by_id["sub-w1-a"].wave_index, 1);
+        assert_eq!(node_by_id["sub-w1-a"].message_turns, 3);
+        assert_eq!(node_by_id["sub-w1-b"].wave_index, 1);
+        assert_eq!(node_by_id["sub-w1-b"].model, "Unrecorded");
+        assert_eq!(node_by_id["sub-w2"].wave_index, 2);
+        assert_eq!(node_by_id["sub-w2-overlap"].wave_index, 2);
+        assert_eq!(node_by_id["sub-w3"].wave_index, 3);
+        assert_eq!(node_by_id["sub-nested-w4"].wave_index, 4);
+        assert_eq!(
+            node_by_id["sub-nested-w4"].parent_node_id.as_deref(),
+            Some("sub-w3")
+        );
+
+        // Verify dispatch + feedback edges
+        assert!(orch_dag.primary.edges.iter().any(|e| {
+            e.from_node_id == "orch-main"
+                && e.to_node_id == "sub-w1-a"
+                && e.kind == "dispatch"
+                && e.message_turns == 3
+        }));
+        assert!(orch_dag.primary.edges.iter().any(|e| {
+            e.from_node_id == "sub-w1-a"
+                && e.to_node_id == "orch-main"
+                && e.kind == "feedback"
+                && e.message_turns == 3
+        }));
+        assert!(!orch_dag.primary.edges.iter().any(|e| {
+            e.from_node_id == "sub-w2" && e.kind == "feedback"
+        }));
+        assert!(orch_dag.primary.edges.iter().any(|e| {
+            e.from_node_id == "sub-nested-w4"
+                && e.to_node_id == "sub-w3"
+                && e.kind == "feedback"
+                && e.message_turns == 2
+        }));
+
+        // All-missing timestamps placed together in wave 1
+        let nots_dag = build_session_dag(&scan, "nots-main").unwrap();
+        assert_eq!(nots_dag.primary.wave_count, 1);
+        assert!(nots_dag
+            .primary
+            .nodes
+            .iter()
+            .filter(|n| !n.is_root)
+            .all(|n| n.wave_index == 1));
+
+        // Linked Planner + Orchestrator returns Planner as primary and Orchestrator as secondary
+        let mut linked_planner = make_test_session(
+            "linked-planner",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some("2026-11-22T08:00:00Z".to_string()), Some("2026-11-22"), "gemini-pro", 50, 0, 10, true)],
+        );
+        linked_planner.first_utc = Some("2026-11-22T08:00:00Z".to_string());
+        linked_planner.written_plan_paths = vec!["docs/superpowers/plans/2026-11-22-dag-link-plan.md".to_string()];
+
+        let mut linked_orch = make_test_session(
+            "linked-orch",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(0, Some("2026-11-22T09:00:00Z".to_string()), Some("2026-11-22"), "claude-sonnet", 80, 0, 20, true)],
+        );
+        linked_orch.first_utc = Some("2026-11-22T09:00:00Z".to_string());
+        linked_orch.referenced_plan_paths = vec!["docs/superpowers/plans/2026-11-22-dag-link-plan.md".to_string()];
+
+        let linked_scan = make_test_scan(vec![linked_planner, linked_orch]);
+        let dag_from_orch = build_session_dag(&linked_scan, "linked-orch").unwrap();
+        assert_eq!(dag_from_orch.selected_session_id, "linked-orch");
+        assert_eq!(dag_from_orch.primary.session_id, "linked-planner");
+        assert_eq!(dag_from_orch.primary.role, SessionRole::Planner);
+        assert_eq!(
+            dag_from_orch.secondary.as_ref().map(|g| g.session_id.as_str()),
+            Some("linked-orch")
+        );
+        let link = dag_from_orch.link.expect("cross-session link");
+        assert_eq!(link.planner_session_id, "linked-planner");
+        assert_eq!(link.orchestrator_session_id, "linked-orch");
+        assert_eq!(link.plan_name, "2026-11-22-dag-link-plan.md");
     }
 }
