@@ -2147,6 +2147,11 @@ table.data-table tbody tr.subagent-child {
   opacity: 0.85;
 }
 
+.tu-seg-slice:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .tu-seg-slice.is-input {
   background: var(--data-new);
 }
@@ -2174,7 +2179,9 @@ table.data-table tbody tr.subagent-child {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--text-strong);
-  white-space: nowrap;
+  max-width: calc(100% - 16px);
+  white-space: normal;
+  text-align: center;
   z-index: 30;
   display: none;
 }

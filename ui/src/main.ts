@@ -130,6 +130,64 @@ let toastSeq = 1;
 let refreshTimer: number | null = null;
 let tokenUsageSeq = 0;
 
+type TokenUsageFocusTarget =
+  | { kind: "id"; id: string; fallbackId?: string }
+  | { kind: "sort"; col: string }
+  | { kind: "row"; model: string };
+
+let pendingTokenUsageFocus: TokenUsageFocusTarget | null = null;
+
+function captureTokenUsageFocus(host: HTMLElement): TokenUsageFocusTarget | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !host.contains(active)) {
+    return null;
+  }
+  if (
+    active.id === "tu-reset-filters" ||
+    active.id === "tu-hero-reset" ||
+    active.id === "tu-retry-btn"
+  ) {
+    return { kind: "id", id: active.id, fallbackId: "tu-filter-period" };
+  }
+  if (active.id) {
+    return { kind: "id", id: active.id };
+  }
+  const sortBtn = active.closest<HTMLElement>(".tu-sort-btn[data-col]");
+  if (sortBtn && host.contains(sortBtn) && sortBtn.dataset.col) {
+    return { kind: "sort", col: sortBtn.dataset.col };
+  }
+  const modelRow = active.closest<HTMLElement>(".tu-model-row[data-model]");
+  if (modelRow && host.contains(modelRow) && modelRow.dataset.model !== undefined) {
+    return { kind: "row", model: modelRow.dataset.model };
+  }
+  return null;
+}
+
+function restoreTokenUsageFocus(
+  host: HTMLElement,
+  target: TokenUsageFocusTarget | null
+): void {
+  if (!target) return;
+  let el: HTMLElement | null = null;
+  if (target.kind === "id") {
+    el = host.querySelector<HTMLElement>(`#${CSS.escape(target.id)}`);
+    if (!el && target.fallbackId) {
+      el = host.querySelector<HTMLElement>(`#${CSS.escape(target.fallbackId)}`);
+    }
+  } else if (target.kind === "sort") {
+    el =
+      Array.from(host.querySelectorAll<HTMLElement>(".tu-sort-btn[data-col]")).find(
+        (candidate) => candidate.dataset.col === target.col
+      ) ?? null;
+  } else if (target.kind === "row") {
+    el =
+      Array.from(host.querySelectorAll<HTMLElement>(".tu-model-row")).find(
+        (candidate) => candidate.dataset.model === target.model
+      ) ?? null;
+  }
+  el?.focus({ preventScroll: true });
+}
+
 function showToast(text: string): void {
   const id = toastSeq++;
   state.toasts.push({ id, text });
@@ -193,6 +251,7 @@ function navigate(screen: ScreenId, sessionId?: string, pushHistory = true): voi
   state.screen = screen;
   state.activeSessionId = sessionId ?? null;
   state.openMenu = null;
+  pendingTokenUsageFocus = null;
   if (pushHistory) {
     state.history = state.history.slice(0, state.historyIdx + 1);
     state.history.push({ screen, sessionId });
@@ -235,6 +294,13 @@ async function loadSessionDetail(sessionId: string): Promise<void> {
 
 async function refreshTokenUsage(): Promise<void> {
   const reqId = ++tokenUsageSeq;
+  const host = document.getElementById("screen-host");
+  if (state.screen === "token-usage" && !state.initialLoading && host) {
+    const captured = captureTokenUsageFocus(host);
+    if (captured) {
+      pendingTokenUsageFocus = captured;
+    }
+  }
   state.tokenUsageLoading = true;
   state.tokenUsageError = null;
   if (state.screen === "token-usage" && !state.initialLoading) {
@@ -704,6 +770,16 @@ function renderBodyOnly(): void {
     `;
   }
 
+  const activeEl = document.activeElement;
+  const focusInsideOrBody =
+    activeEl === document.body ||
+    activeEl === null ||
+    (activeEl instanceof HTMLElement && host.contains(activeEl));
+  const tuFocusTarget =
+    state.screen === "token-usage"
+      ? captureTokenUsageFocus(host) ?? (focusInsideOrBody ? pendingTokenUsageFocus : null)
+      : null;
+
   const contentWrap = document.createElement("div");
   if (warningHtml) {
     host.innerHTML = warningHtml;
@@ -784,6 +860,10 @@ function renderBodyOnly(): void {
           void refreshTokenUsage();
         });
         contentWrap.appendChild(emptyBanner);
+      }
+      restoreTokenUsageFocus(host, tuFocusTarget);
+      if (!state.tokenUsageLoading) {
+        pendingTokenUsageFocus = null;
       }
     }
   } else if (state.screen === "sessions" && dash) {

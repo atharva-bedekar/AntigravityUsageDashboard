@@ -1029,8 +1029,8 @@ function mockBuckets(period: TimePeriod): {
   }
   return {
     buckets,
-    windowStart: shortMonthDayYear(new Date(buckets[0].startMs)),
-    windowEnd: shortMonthDayYear(MOCK_NOW),
+    windowStart: buckets[0].rangeLabel,
+    windowEnd: buckets[buckets.length - 1].rangeLabel,
   };
 }
 

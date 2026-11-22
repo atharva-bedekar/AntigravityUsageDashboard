@@ -1463,6 +1463,7 @@ pub fn build_token_usage_at(
 
     let mut by_model: Vec<ModelUsageRow> = model_map
         .into_iter()
+        .filter(|(_, acc)| acc.calls > 0 || acc.wall_time_secs > 0)
         .map(|(model, acc)| {
             let total = acc.fresh_in + acc.cached + acc.output;
             ModelUsageRow {
@@ -1990,5 +1991,103 @@ mod tests {
         assert_eq!(p_life.time_series[0].range_label, "Dec 2025");
         assert_eq!(p_life.time_series[0].total, 15);
         assert_eq!(p_life.totals.total, 15 + 25 + 35 + 45);
+    }
+
+    #[test]
+    fn token_usage_omits_zero_activity_model_rows() {
+        let now = Local.with_ymd_and_hms(2026, 11, 22, 17, 0, 0).unwrap();
+        let ts0 = Local
+            .with_ymd_and_hms(2026, 11, 22, 12, 0, 0)
+            .unwrap()
+            .to_rfc3339();
+        let ts1 = Local
+            .with_ymd_and_hms(2026, 11, 22, 12, 0, 15)
+            .unwrap()
+            .to_rfc3339();
+        let filter = TokenUsageFilter {
+            period: TimePeriod::OneWeek,
+            project: None,
+            model: None,
+            agent: AgentFilter::All,
+        };
+
+        // Single non-token step with 0 wall time must not emit a ghost model row.
+        let single_zero = make_test_scan(vec![make_test_session(
+            "s-zero",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![make_test_step(
+                0,
+                Some(ts0.clone()),
+                Some("2026-11-22"),
+                "gemini-3.8-flash",
+                0,
+                0,
+                0,
+                false,
+            )],
+        )]);
+        let p_zero = build_token_usage_at(&single_zero, &filter, now);
+        assert!(p_zero.by_model.is_empty());
+        assert_eq!(p_zero.totals.total, 0);
+
+        // A model with non-zero wall time (even with 0 token calls) or tokens is kept.
+        let active = make_test_scan(vec![make_test_session(
+            "s-active",
+            SessionKind::Main,
+            "proj",
+            None,
+            Some("2026-11-22"),
+            vec![
+                make_test_step(
+                    0,
+                    Some(ts0.clone()),
+                    Some("2026-11-22"),
+                    "wall-only-model",
+                    0,
+                    0,
+                    0,
+                    false,
+                ),
+                make_test_step(
+                    1,
+                    Some(ts1.clone()),
+                    Some("2026-11-22"),
+                    "wall-only-model",
+                    0,
+                    0,
+                    0,
+                    false,
+                ),
+                make_test_step(
+                    2,
+                    Some(ts1),
+                    Some("2026-11-22"),
+                    "token-model",
+                    10,
+                    20,
+                    5,
+                    true,
+                ),
+            ],
+        )]);
+        let p_active = build_token_usage_at(&active, &filter, now);
+        assert_eq!(p_active.by_model.len(), 2);
+        let token_row = p_active
+            .by_model
+            .iter()
+            .find(|r| r.model == "token-model")
+            .unwrap();
+        assert_eq!(token_row.calls, 1);
+        assert_eq!(token_row.total, 35);
+        let wall_row = p_active
+            .by_model
+            .iter()
+            .find(|r| r.model == "wall-only-model")
+            .unwrap();
+        assert_eq!(wall_row.calls, 0);
+        assert_eq!(wall_row.wall_time_secs, 15);
     }
 }

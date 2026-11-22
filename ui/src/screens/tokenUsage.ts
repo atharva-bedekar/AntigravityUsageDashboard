@@ -322,7 +322,7 @@ export function renderTokenUsage(
                       ? `<span class="tu-unrecorded" title="No Model Selection notice was recorded in these transcripts">Unrecorded</span>`
                       : escapeHtml(row.model);
                   return `
-                    <tr class="${rowCls}" data-row-idx="${idx}" tabindex="0">
+                    <tr class="${rowCls}" data-row-idx="${idx}" data-model="${escapeHtml(row.model)}" aria-pressed="${isSelected ? "true" : "false"}" tabindex="0">
                       <td>${modelCellHtml}</td>
                       <td class="num" title="${escapeHtml(formatExactTokens(row.freshIn))}">${escapeHtml(formatTokens(row.freshIn, numberFormat))}</td>
                       <td class="num" title="${escapeHtml(formatExactTokens(row.cached))}">${escapeHtml(formatTokens(row.cached, numberFormat))}</td>
