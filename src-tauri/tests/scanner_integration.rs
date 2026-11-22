@@ -400,3 +400,77 @@ fn multi_source_merge_and_subagent_workspace_inheritance() {
     assert_eq!(cli_sub.title, "[researcher] Inspect logs");
     assert_eq!(cli_sub.project, "MyCliRepo");
 }
+
+#[test]
+fn transcript_ignores_regex_literal_and_tool_output_model_switch_false_positives() {
+    // 1. Standalone regex literal in PLANNER_RESPONSE leaves model_switch=None and observed_model="Unrecorded"
+    let regex_only = concat!(
+        "{\"step_index\":0,\"type\":\"USER_INPUT\",\"source\":\"USER_EXPLICIT\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"content\":\"Inspect regex\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"Regex::new(r\\\"The user changed setting `Model Selection` from `?(.+?)`? to `?([^\\\\r\\\\n`]+)`?(?:[\\\\r\\\\n`]|$)\\\")\"}\n",
+        "{\"step_index\":2,\"type\":\"VIEW_FILE\",\"source\":\"TOOL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:10Z\",\"content\":\"The user changed setting `Model Selection` from `Gemini 3.8 Flash` to `Gemini 4 Argon`\"}\n",
+        "{\"step_index\":3,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:15Z\",\"input_tokens\":50,\"output_tokens\":10,\"content\":\"The user changed setting `Model Selection` from `Claude Opus 5.5` to `None`\"}\n"
+    );
+
+    let parsed_unrecorded = parse_transcript_reader(
+        &mut Cursor::new(regex_only.as_bytes()),
+        "synthetic/regex_false_positive.jsonl".to_string(),
+    )
+    .expect("parse regex_only");
+
+    for step in &parsed_unrecorded.steps {
+        assert!(
+            step.model_switch.is_none(),
+            "unexpected model_switch on step {}: {:?}",
+            step.step_index,
+            step.model_switch
+        );
+        assert_eq!(step.observed_model, "Unrecorded");
+    }
+
+    // 2. Regex literal after a valid switch preserves the prior valid observed_model
+    let after_valid = concat!(
+        "{\"step_index\":0,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"The user changed setting `Model Selection` from `None` to `Gemini 4 Argon`\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":120,\"output_tokens\":30,\"content\":\"Regex::new(r\\\"The user changed setting `Model Selection` from `?(.+?)`? to `?([^\\\\r\\\\n`]+)`?(?:[\\\\r\\\\n`]|$)\\\")\"}\n"
+    );
+
+    let parsed_after = parse_transcript_reader(
+        &mut Cursor::new(after_valid.as_bytes()),
+        "synthetic/regex_after_valid.jsonl".to_string(),
+    )
+    .expect("parse after_valid");
+
+    assert!(parsed_after.steps[0].model_switch.is_some());
+    assert!(parsed_after.steps[1].model_switch.is_none());
+    assert_eq!(parsed_after.steps[0].observed_model, "Gemini 4 Argon");
+    assert_eq!(parsed_after.steps[1].observed_model, "Gemini 4 Argon");
+}
+
+#[test]
+fn transcript_merges_thinking_level_suffixes_into_base_model_names() {
+    let jsonl = concat!(
+        "{\"step_index\":0,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"input_tokens\":100,\"output_tokens\":20,\"content\":\"The user changed setting `Model Selection` from `Claude Opus 5.5 (High)` to `Claude Opus 5.5 (Medium)`\"}\n",
+        "{\"step_index\":1,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:05Z\",\"input_tokens\":150,\"output_tokens\":30,\"content\":\"The user changed setting `Model Selection` from `Claude Opus 5.5 (Medium)` to `Gemini 4 Neon (Low)`\"}\n",
+        "{\"step_index\":2,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:10Z\",\"input_tokens\":200,\"output_tokens\":40,\"content\":\"The user changed setting `Model Selection` from `Gemini 4 Neon (minimal)` to `Claude Sonnet 5.5 (Thinking) (MAX)`\"}\n"
+    );
+
+    let parsed = parse_transcript_reader(
+        &mut Cursor::new(jsonl.as_bytes()),
+        "synthetic/thinking_suffixes.jsonl".to_string(),
+    )
+    .expect("parse thinking_suffixes");
+
+    let sw0 = parsed.steps[0].model_switch.as_ref().expect("sw0");
+    assert_eq!(sw0.from_model, "Claude Opus 5.5");
+    assert_eq!(sw0.to_model, "Claude Opus 5.5");
+    assert_eq!(parsed.steps[0].observed_model, "Claude Opus 5.5");
+
+    let sw1 = parsed.steps[1].model_switch.as_ref().expect("sw1");
+    assert_eq!(sw1.from_model, "Claude Opus 5.5");
+    assert_eq!(sw1.to_model, "Gemini 4 Neon");
+    assert_eq!(parsed.steps[1].observed_model, "Gemini 4 Neon");
+
+    let sw2 = parsed.steps[2].model_switch.as_ref().expect("sw2");
+    assert_eq!(sw2.from_model, "Gemini 4 Neon");
+    assert_eq!(sw2.to_model, "Claude Sonnet 5.5");
+    assert_eq!(parsed.steps[2].observed_model, "Claude Sonnet 5.5");
+}

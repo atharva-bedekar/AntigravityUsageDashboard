@@ -44,6 +44,7 @@ interface AppState {
   screen: ScreenId;
   history: NavHistoryEntry[];
   historyIdx: number;
+  sidebarCollapsed: boolean;
   openMenu: "usage" | "view" | "help" | null;
   glossaryOpen: boolean;
   glossaryHighlight: string | null;
@@ -72,6 +73,7 @@ const state: AppState = {
   screen: "token-usage",
   history: [{ screen: "token-usage" }],
   historyIdx: 0,
+  sidebarCollapsed: false,
   openMenu: null,
   glossaryOpen: false,
   glossaryHighlight: null,
@@ -141,6 +143,10 @@ function restoreOverlayTrigger(): void {
 }
 
 function openQuickSearch(): void {
+  if (state.openMenu !== null) {
+    state.openMenu = null;
+    updateMenuDropdowns();
+  }
   captureOverlayTrigger();
   state.glossaryOpen = false;
   state.quickSearchOpen = true;
@@ -430,11 +436,17 @@ function getRescanTitle(diag: ScanDiagnostics | undefined): string {
   return `Rescan logs${diag?.scannedAtLocalHm ? ` (last scan ${diag.scannedAtLocalHm})` : ""}`;
 }
 
+const navItems: Array<{ id: ScreenId; label: string; icon: (s?: number) => string }> = [
+  { id: "token-usage", label: "Token Usage", icon: icons.overview },
+];
+
 function renderRescanButtonInner(diag: ScanDiagnostics | undefined): string {
   return `
-    ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(14)}
-    <span class="tb-rescan-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
-    ${diag?.scannedAtLocalHm ? `<span class="tb-rescan-time mono">${escapeHtml(diag.scannedAtLocalHm)}</span>` : ""}
+    <span class="rescan-btn-left">
+      ${state.scanning ? `<span class="ring-spinner"></span>` : icons.refresh(15)}
+      <span class="nav-label">${state.scanning ? "Scanning…" : "Rescan"}</span>
+    </span>
+    ${diag?.scannedAtLocalHm ? `<span class="rescan-time mono">${escapeHtml(diag.scannedAtLocalHm)}</span>` : ""}
   `;
 }
 
@@ -456,7 +468,7 @@ function updateTopBarAndStatus(): void {
   const diag = dash?.diagnostics;
   const { missingFolder, hasWarnings } = getDiagnosticsStatus(diag);
 
-  const rescanBtn = document.getElementById("tb-rescan") as HTMLButtonElement | null;
+  const rescanBtn = document.getElementById("sb-rescan") as HTMLButtonElement | null;
   if (rescanBtn) {
     rescanBtn.disabled = state.scanning;
     rescanBtn.title = getRescanTitle(diag);
@@ -503,37 +515,6 @@ function renderApp(): void {
           ${renderMenuButton("help", "Help")}
         </div>
         <div class="menu-bar-right">
-          <div class="top-bar-actions">
-            <button
-              type="button"
-              class="top-bar-btn"
-              id="tb-rescan"
-              title="${escapeHtml(getRescanTitle(diag))}"
-              aria-label="Rescan usage data"
-              ${state.scanning ? "disabled" : ""}
-            >
-              ${renderRescanButtonInner(diag)}
-            </button>
-            <button
-              type="button"
-              class="top-bar-btn top-bar-icon-btn"
-              id="tb-search"
-              title="Quick search (Ctrl+K)"
-              aria-label="Quick search (Ctrl+K)"
-            >
-              ${icons.search(14)}
-            </button>
-            <button
-              type="button"
-              class="top-bar-btn top-bar-icon-btn ${state.screen === "settings" ? "active" : ""}"
-              id="tb-settings"
-              title="Settings"
-              aria-label="Settings"
-              aria-pressed="${state.screen === "settings" ? "true" : "false"}"
-            >
-              ${icons.settings(14)}
-            </button>
-          </div>
           <div class="window-controls">
             <button type="button" class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -548,17 +529,91 @@ function renderApp(): void {
         </div>
       </header>
 
-      <main class="workspace-main">
-        <section class="content-panel">
-          <div class="panel-scroll" id="panel-scroll">
-            <div id="screen-host" class="workspace-container"></div>
+      <div class="app-body">
+        <aside class="sidebar-col${state.sidebarCollapsed ? " collapsed" : ""}">
+          <div class="left-toolbar">
+            <button
+              type="button"
+              class="icon-btn"
+              id="tb-toggle-sidebar"
+              title="Toggle sidebar"
+              aria-label="Toggle sidebar"
+              aria-expanded="${!state.sidebarCollapsed}"
+            >
+              ${icons.sidebar(17)}
+            </button>
+            <button
+              type="button"
+              class="icon-btn"
+              id="tb-search"
+              title="Quick search (Ctrl+K)"
+              aria-label="Quick search"
+            >
+              ${icons.search(16)}
+            </button>
           </div>
-          <button type="button" class="scroll-down-fab" id="scroll-down-fab" title="Scroll down" style="display:none">${icons.arrowDown(15)}</button>
-          <div class="status-line ${hasWarnings ? "has-warnings" : ""}" id="status-line">
-            ${renderStatusLineInner(dash, missingFolder)}
+
+          <button
+            type="button"
+            class="rescan-btn"
+            id="sb-rescan"
+            title="${escapeHtml(getRescanTitle(diag))}"
+            aria-label="Rescan usage data"
+            ${state.scanning ? "disabled" : ""}
+          >
+            ${renderRescanButtonInner(diag)}
+          </button>
+
+          <nav class="sidebar-nav" aria-label="Primary navigation">
+            ${navItems
+              .map((item) => {
+                const active = state.screen === item.id;
+                return `
+                  <button
+                    type="button"
+                    class="nav-row ${active ? "active" : ""}"
+                    id="sb-nav-${item.id}"
+                    data-nav="${item.id}"
+                    title="${escapeHtml(item.label)}"
+                    aria-label="${escapeHtml(item.label)}"
+                    ${active ? 'aria-current="page"' : ""}
+                  >
+                    <span class="nav-icon">${item.icon(17)}</span>
+                    <span class="nav-label">${escapeHtml(item.label)}</span>
+                  </button>
+                `;
+              })
+              .join("")}
+          </nav>
+
+          <div class="sidebar-footer">
+            <button
+              type="button"
+              class="nav-row ${state.screen === "settings" ? "active" : ""}"
+              id="sb-nav-settings"
+              data-nav="settings"
+              title="Settings"
+              aria-label="Settings"
+              ${state.screen === "settings" ? 'aria-current="page"' : ""}
+            >
+              <span class="nav-icon">${icons.settings(17)}</span>
+              <span class="nav-label">Settings</span>
+            </button>
           </div>
-        </section>
-      </main>
+        </aside>
+
+        <main class="workspace-main">
+          <section class="content-panel">
+            <div class="panel-scroll" id="panel-scroll">
+              <div id="screen-host" class="workspace-container"></div>
+            </div>
+            <button type="button" class="scroll-down-fab" id="scroll-down-fab" title="Scroll down" style="display:none">${icons.arrowDown(15)}</button>
+            <div class="status-line ${hasWarnings ? "has-warnings" : ""}" id="status-line">
+              ${renderStatusLineInner(dash, missingFolder)}
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
     <div id="modal-host"></div>
     <div id="drawer-host"></div>
@@ -580,37 +635,53 @@ function renderApp(): void {
 
 function renderMenuButton(id: "usage" | "view" | "help", label: string): string {
   const open = state.openMenu === id;
-  let dropdown = "";
-  if (open) {
-    if (id === "usage") {
-      dropdown = `
-        <div class="menu-dropdown">
-          <button type="button" class="menu-dropdown-item" id="m-rescan"><span>Rescan now</span><span class="menu-shortcut">F5</span></button>
-          <button type="button" class="menu-dropdown-item" id="m-export"><span>Export CSV</span></button>
-          <button type="button" class="menu-dropdown-item" id="m-copy"><span>Copy summary</span></button>
-        </div>`;
-    } else if (id === "view") {
-      dropdown = `
-        <div class="menu-dropdown">
-          <button type="button" class="menu-dropdown-item" data-nav="token-usage">Token Usage</button>
-          <button type="button" class="menu-dropdown-item" data-nav="settings">Settings</button>
-          <div class="menu-dropdown-sep"></div>
-          <button type="button" class="menu-dropdown-item" id="m-toggle-theme">Toggle Light / Dark theme</button>
-        </div>`;
-    } else if (id === "help") {
-      dropdown = `
-        <div class="menu-dropdown">
-          <button type="button" class="menu-dropdown-item" id="m-glossary">Glossary ("About these numbers")</button>
-          <button type="button" class="menu-dropdown-item" id="m-about">About Antigravity Usage</button>
-        </div>`;
-    }
+  let dropdownItems = "";
+  if (id === "usage") {
+    dropdownItems = `
+      <button type="button" class="menu-dropdown-item" id="m-rescan"><span>Rescan now</span><span class="menu-shortcut">F5</span></button>
+      <button type="button" class="menu-dropdown-item" id="m-export"><span>Export CSV</span></button>
+      <button type="button" class="menu-dropdown-item" id="m-copy"><span>Copy summary</span></button>`;
+  } else if (id === "view") {
+    dropdownItems = `
+      <button type="button" class="menu-dropdown-item" data-nav="token-usage">Token Usage</button>
+      <button type="button" class="menu-dropdown-item" data-nav="settings">Settings</button>
+      <div class="menu-dropdown-sep"></div>
+      <button type="button" class="menu-dropdown-item" id="m-toggle-theme">Toggle Light / Dark theme</button>`;
+  } else if (id === "help") {
+    dropdownItems = `
+      <button type="button" class="menu-dropdown-item" id="m-glossary">Glossary ("About these numbers")</button>
+      <button type="button" class="menu-dropdown-item" id="m-about">About Antigravity Usage</button>`;
   }
   return `
     <div class="menu-item-wrap">
-      <button type="button" class="menu-trigger ${open ? "open" : ""}" data-menu="${id}">${label}</button>
-      ${dropdown}
+      <button
+        type="button"
+        class="menu-trigger menu-item${open ? " open" : ""}"
+        data-menu="${id}"
+        aria-haspopup="true"
+        aria-expanded="${open ? "true" : "false"}"
+      >${label}</button>
+      <div class="menu-dropdown${open ? " open" : ""}"${open ? "" : " hidden"}>
+        ${dropdownItems}
+      </div>
     </div>
   `;
+}
+
+function updateMenuDropdowns(): void {
+  document.querySelectorAll<HTMLElement>(".menu-item-wrap").forEach((wrap) => {
+    const trigger = wrap.querySelector<HTMLButtonElement>(".menu-trigger[data-menu]");
+    const dropdown = wrap.querySelector<HTMLElement>(".menu-dropdown");
+    if (!trigger) return;
+    const id = trigger.dataset.menu as AppState["openMenu"];
+    const isOpen = state.openMenu === id;
+    trigger.classList.toggle("open", isOpen);
+    trigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    if (dropdown) {
+      dropdown.hidden = !isOpen;
+      dropdown.classList.toggle("open", isOpen);
+    }
+  });
 }
 
 function renderBodyOnly(): void {
@@ -918,61 +989,96 @@ function attachShellListeners(): void {
       e.stopPropagation();
       const id = btn.dataset.menu as AppState["openMenu"];
       state.openMenu = state.openMenu === id ? null : id;
-      renderApp();
+      updateMenuDropdowns();
     });
   });
 
-  document.getElementById("m-rescan")?.addEventListener("click", () => {
+  document.getElementById("m-rescan")?.addEventListener("click", (e) => {
+    e.stopPropagation();
     state.openMenu = null;
+    updateMenuDropdowns();
     void runRescan();
   });
-  document.getElementById("m-export")?.addEventListener("click", async () => {
+  document.getElementById("m-export")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
     state.openMenu = null;
+    updateMenuDropdowns();
     const res = await api.exportCsv(state.filter);
     showToast(`Exported ${res.rowCount} rows to ${res.path}`);
   });
-  document.getElementById("m-copy")?.addEventListener("click", async () => {
+  document.getElementById("m-copy")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
     state.openMenu = null;
+    updateMenuDropdowns();
     const summary = await api.copySummary(state.filter);
     void navigator.clipboard?.writeText(summary);
     showToast("Summary copied to clipboard");
   });
-  document.getElementById("m-toggle-theme")?.addEventListener("click", async () => {
+  document.getElementById("m-toggle-theme")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
     state.openMenu = null;
+    updateMenuDropdowns();
     if (!state.config) return;
     const next = structuredClone(state.config);
     next.display.theme = next.display.theme === "dark" ? "light" : "dark";
     state.config = await api.saveSettings(next);
     applyDisplayPreferences(state.config);
-    renderApp();
+    if (state.screen === "settings") {
+      renderBodyOnly();
+    }
   });
-  document.getElementById("m-glossary")?.addEventListener("click", () => {
+  document.getElementById("m-glossary")?.addEventListener("click", (e) => {
+    e.stopPropagation();
     state.openMenu = null;
+    updateMenuDropdowns();
     openGlossary(null);
   });
-  document.getElementById("m-about")?.addEventListener("click", () => {
+  document.getElementById("m-about")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.openMenu = null;
+    updateMenuDropdowns();
     state.settingsSection = "about";
-    navigate("settings");
+    if (state.screen === "settings") {
+      renderBodyOnly();
+    } else {
+      navigate("settings");
+    }
   });
 
-  // Top bar actions
+  // Top bar home & sidebar actions
   document.getElementById("tb-home")?.addEventListener("click", () => {
+    if (state.openMenu !== null) {
+      state.openMenu = null;
+      updateMenuDropdowns();
+    }
     if (state.screen === "token-usage") return;
     navigate("token-usage");
   });
-  document.getElementById("tb-rescan")?.addEventListener("click", () => void runRescan());
-  document.getElementById("tb-search")?.addEventListener("click", () => {
-    state.openMenu = null;
-    openQuickSearch();
+  document.getElementById("tb-toggle-sidebar")?.addEventListener("click", () => {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    const sidebar = document.querySelector<HTMLElement>(".sidebar-col");
+    sidebar?.classList.toggle("collapsed", state.sidebarCollapsed);
+    document
+      .getElementById("tb-toggle-sidebar")
+      ?.setAttribute("aria-expanded", String(!state.sidebarCollapsed));
   });
-  document.getElementById("tb-settings")?.addEventListener("click", () => {
-    navigate(state.screen === "settings" ? "token-usage" : "settings");
+  document.getElementById("sb-rescan")?.addEventListener("click", () => void runRescan());
+  document.getElementById("tb-search")?.addEventListener("click", () => {
+    openQuickSearch();
   });
 
   document.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
       const target = el.dataset.nav as ScreenId;
-      if (target) navigate(target);
+      if (!target) return;
+      if (state.openMenu !== null) {
+        state.openMenu = null;
+        updateMenuDropdowns();
+      }
+      if (state.screen !== target) {
+        navigate(target);
+      }
     });
   });
 
@@ -985,10 +1091,12 @@ function attachShellListeners(): void {
 }
 
 // Global keyboard shortcuts & click-outside menu closing
-window.addEventListener("click", () => {
+window.addEventListener("click", (e) => {
   if (state.openMenu !== null) {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest(".menu-item-wrap")) return;
     state.openMenu = null;
-    renderApp();
+    updateMenuDropdowns();
   }
 });
 
@@ -1011,8 +1119,12 @@ window.addEventListener("keydown", (e) => {
     } else if (state.glossaryOpen) {
       closeGlossary();
     } else if (state.openMenu) {
+      const prevMenu = state.openMenu;
       state.openMenu = null;
-      renderApp();
+      updateMenuDropdowns();
+      document
+        .querySelector<HTMLButtonElement>(`.menu-trigger[data-menu="${prevMenu}"]`)
+        ?.focus({ preventScroll: true });
     } else if (state.screen === "settings") {
       goBack();
     }

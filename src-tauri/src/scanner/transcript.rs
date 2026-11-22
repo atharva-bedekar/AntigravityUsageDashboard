@@ -26,6 +26,14 @@ fn model_switch_re() -> &'static Regex {
     })
 }
 
+fn thinking_suffix_re() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)\s*\((high|medium|low|minimal|max|thinking|fast|default)\)\s*$")
+            .expect("valid thinking suffix regex")
+    })
+}
+
 fn denial_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
@@ -131,10 +139,108 @@ pub fn collapse_whitespace(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn clean_model_name(raw: &str) -> String {
+fn trim_model_raw(raw: &str) -> &str {
     let first_sentence = raw.split(". ").next().unwrap_or(raw);
-    let trimmed = first_sentence.trim().trim_matches('`').trim();
+    first_sentence.trim().trim_matches('`').trim()
+}
+
+fn is_valid_model_name(raw: &str) -> bool {
+    let trimmed = trim_model_raw(raw);
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("none") {
+        return false;
+    }
+    if !trimmed.chars().next().is_some_and(|c| c.is_ascii_alphanumeric()) {
+        return false;
+    }
+    if trimmed.contains("(.") || trimmed.contains(".)") {
+        return false;
+    }
+    !trimmed.chars().any(|c| {
+        matches!(
+            c,
+            '?' | '*'
+                | '+'
+                | '['
+                | ']'
+                | '\\'
+                | '{'
+                | '}'
+                | '^'
+                | '$'
+                | '|'
+                | '<'
+                | '>'
+                | '='
+                | ';'
+                | '"'
+                | '\''
+                | '`'
+        )
+    })
+}
+
+fn clean_model_name(raw: &str) -> String {
+    let mut trimmed = trim_model_raw(raw);
+    while let Some(m) = thinking_suffix_re().find(trimmed) {
+        trimmed = trimmed[..m.start()].trim();
+    }
     truncate_chars(trimmed, 60)
+}
+
+fn is_tool_or_command_step(type_upper: &str) -> bool {
+    matches!(
+        type_upper,
+        "RUN_COMMAND"
+            | "COMMAND_STATUS"
+            | "SEND_COMMAND_INPUT"
+            | "READ_TERMINAL"
+            | "VIEW_FILE"
+            | "VIEW_FILE_OUTLINE"
+            | "VIEW_CODE_ITEM"
+            | "GREP_SEARCH"
+            | "FIND_BY_NAME"
+            | "LIST_DIR"
+            | "WRITE_TO_FILE"
+            | "REPLACE_FILE_CONTENT"
+            | "MULTI_REPLACE_FILE_CONTENT"
+            | "CALL_MCP_TOOL"
+            | "TOOL_CALL"
+            | "TOOL_OUTPUT"
+            | "TOOL_RESULT"
+    )
+}
+
+fn extract_model_switch(
+    step_index: i64,
+    content: &str,
+    type_upper: &str,
+) -> Option<ModelSwitchRecord> {
+    if content.is_empty() || is_tool_or_command_step(type_upper) {
+        return None;
+    }
+    let caps = model_switch_re().captures(content)?;
+    let raw_from = caps.get(1).map_or("", |m| m.as_str());
+    let raw_to = caps.get(2).map_or("", |m| m.as_str());
+
+    let from_trimmed = trim_model_raw(raw_from);
+    let from_ok = from_trimmed.is_empty()
+        || from_trimmed.eq_ignore_ascii_case("none")
+        || is_valid_model_name(raw_from);
+    if !from_ok || !is_valid_model_name(raw_to) {
+        return None;
+    }
+
+    let from_model = clean_model_name(raw_from);
+    let to_model = clean_model_name(raw_to);
+    if to_model.is_empty() || to_model.eq_ignore_ascii_case("none") {
+        return None;
+    }
+
+    Some(ModelSwitchRecord {
+        step_index,
+        from_model,
+        to_model,
+    })
 }
 
 fn normalize_model_label(raw: &str) -> String {
@@ -360,15 +466,7 @@ pub fn parse_transcript_reader<R: BufRead>(
 
         let permission_denied = !content_str.is_empty() && denial_re().is_match(content_str);
 
-        let model_switch = if !content_str.is_empty() {
-            model_switch_re().captures(content_str).map(|caps| ModelSwitchRecord {
-                step_index,
-                from_model: clean_model_name(caps.get(1).map_or("", |m| m.as_str())),
-                to_model: clean_model_name(caps.get(2).map_or("", |m| m.as_str())),
-            })
-        } else {
-            None
-        };
+        let model_switch = extract_model_switch(step_index, content_str, &type_upper);
 
         // Sanitize tool calls
         let mut step_tool_calls = Vec::new();
