@@ -40,19 +40,30 @@ struct SessionScanItem {
 pub fn scan_all_sources(config: &AppConfig) -> ScanResult {
     let started = Instant::now();
 
+    let app_root = if config.app_brain_root.trim().is_empty() {
+        crate::config::default_app_brain_root()
+    } else {
+        config.app_brain_root.clone()
+    };
+    let cli_root = if config.cli_brain_root.trim().is_empty() {
+        crate::config::default_cli_brain_root()
+    } else {
+        config.cli_brain_root.clone()
+    };
+
     let mut specs = vec![
         SourceSpec {
             source: SourceKind::App,
             label: "Antigravity App".to_string(),
-            root_path: config.app_brain_root.clone(),
-            enabled: config.app_enabled,
+            root_path: app_root,
+            enabled: true,
             read_app_sqlite: config.read_app_sqlite,
         },
         SourceSpec {
             source: SourceKind::Cli,
             label: "Antigravity CLI".to_string(),
-            root_path: config.cli_brain_root.clone(),
-            enabled: config.cli_enabled,
+            root_path: cli_root,
+            enabled: true,
             read_app_sqlite: false,
         },
     ];
@@ -526,5 +537,122 @@ fn verify_scan_consistency(sessions: &[SessionRecord]) -> ConsistencyReport {
         daily_total,
         discrepancy,
         message,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEST_SEQ: AtomicU64 = AtomicU64::new(0);
+
+    struct TempBrainDir(PathBuf);
+
+    impl TempBrainDir {
+        fn new(label: &str) -> Self {
+            let id = TEST_SEQ.fetch_add(1, Ordering::Relaxed);
+            let dir = std::env::temp_dir().join(format!(
+                "agy_scanner_mod_{label}_{}_{}",
+                std::process::id(),
+                id
+            ));
+            let _ = fs::remove_dir_all(&dir);
+            fs::create_dir_all(&dir).expect("create temp dir");
+            Self(dir)
+        }
+    }
+
+    impl Drop for TempBrainDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn write_transcript(root: &Path, session_id: &str, tokens: u64) {
+        let logs = root.join(session_id).join(".system_generated").join("logs");
+        fs::create_dir_all(&logs).expect("create logs dir");
+        let line = format!(
+            "{{\"step_index\":0,\"type\":\"PLANNER_RESPONSE\",\"source\":\"MODEL\",\"status\":\"DONE\",\"created_at\":\"2026-11-10T10:00:00Z\",\"input_tokens\":{tokens},\"cache_read_tokens\":0,\"output_tokens\":10}}\n"
+        );
+        fs::write(logs.join("transcript.jsonl"), line).expect("write transcript");
+    }
+
+    #[test]
+    fn scan_all_sources_always_scans_app_and_cli_even_when_flags_are_false() {
+        let root = TempBrainDir::new("always_scan");
+        let app_brain = root.0.join("app_brain");
+        let cli_brain = root.0.join("cli_brain");
+        write_transcript(&app_brain, "app-sess-1", 100);
+        write_transcript(&cli_brain, "cli-sess-1", 200);
+
+        let mut cfg = crate::config::default_config();
+        cfg.app_brain_root = app_brain.to_string_lossy().into_owned();
+        cfg.cli_brain_root = cli_brain.to_string_lossy().into_owned();
+        cfg.app_enabled = false;
+        cfg.cli_enabled = false;
+
+        // Round-trip through JSON as an older config.json with disabled flags
+        let json = serde_json::to_string(&cfg).expect("serialize config");
+        let loaded: AppConfig = serde_json::from_str(&json).expect("deserialize legacy config");
+        assert!(!loaded.app_enabled);
+        assert!(!loaded.cli_enabled);
+
+        let result = scan_all_sources(&loaded);
+
+        assert_eq!(result.sessions.len(), 2);
+        let ids: HashSet<&str> = result
+            .sessions
+            .iter()
+            .map(|s| s.session_id.as_str())
+            .collect();
+        assert!(ids.contains("app-sess-1"));
+        assert!(ids.contains("cli-sess-1"));
+
+        let app_diag = result
+            .diagnostics
+            .sources
+            .iter()
+            .find(|s| s.source == SourceKind::App)
+            .expect("app diagnostics");
+        let cli_diag = result
+            .diagnostics
+            .sources
+            .iter()
+            .find(|s| s.source == SourceKind::Cli)
+            .expect("cli diagnostics");
+        assert!(app_diag.enabled);
+        assert!(cli_diag.enabled);
+        assert_eq!(app_diag.sessions_with_tokens, 1);
+        assert_eq!(cli_diag.sessions_with_tokens, 1);
+    }
+
+    #[test]
+    fn scan_all_sources_falls_back_to_default_roots_when_empty() {
+        let mut cfg = crate::config::default_config();
+        cfg.app_brain_root = "   ".to_string();
+        cfg.cli_brain_root = String::new();
+        cfg.app_enabled = false;
+        cfg.cli_enabled = false;
+
+        let result = scan_all_sources(&cfg);
+
+        let app_diag = result
+            .diagnostics
+            .sources
+            .iter()
+            .find(|s| s.source == SourceKind::App)
+            .expect("app diagnostics");
+        let cli_diag = result
+            .diagnostics
+            .sources
+            .iter()
+            .find(|s| s.source == SourceKind::Cli)
+            .expect("cli diagnostics");
+        assert!(app_diag.enabled);
+        assert!(cli_diag.enabled);
+        assert_eq!(app_diag.root_path, crate::config::default_app_brain_root());
+        assert_eq!(cli_diag.root_path, crate::config::default_cli_brain_root());
     }
 }
