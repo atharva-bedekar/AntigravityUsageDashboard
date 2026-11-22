@@ -88,7 +88,8 @@ pub mod commands {
     use crate::metrics::{self, build_dashboard, build_session_detail};
     use crate::models::{
         AboutInfo, AppConfig, DashboardPayload, ExportResult, FilterState, ForecastMethod,
-        ForecastResult, ScanDiagnostics, SessionDetailPayload, TokenUsageFilter, TokenUsagePayload,
+        ForecastResult, ScanDiagnostics, SessionDagPayload, SessionDetailPayload, SessionsFilter,
+        SessionsOverviewPayload, TokenUsageFilter, TokenUsagePayload,
     };
     use crate::pricing::Catalog;
     use crate::snapshots::clear_snapshots as clear_db_snapshots;
@@ -127,6 +128,26 @@ pub mod commands {
         let mut guard = state.0.lock().map_err(|e| format!("State lock error: {e}"))?;
         let scan = ensure_scan(&mut guard);
         Ok(metrics::build_token_usage(scan, &filter))
+    }
+
+    #[tauri::command]
+    pub fn get_sessions_overview(
+        filter: SessionsFilter,
+        state: State<'_, AppState>,
+    ) -> Result<SessionsOverviewPayload, String> {
+        let mut guard = state.0.lock().map_err(|e| format!("State lock error: {e}"))?;
+        let scan = ensure_scan(&mut guard);
+        Ok(metrics::build_sessions_overview(scan, &filter))
+    }
+
+    #[tauri::command]
+    pub fn get_session_dag(
+        session_id: String,
+        state: State<'_, AppState>,
+    ) -> Result<SessionDagPayload, String> {
+        let mut guard = state.0.lock().map_err(|e| format!("State lock error: {e}"))?;
+        let scan = ensure_scan(&mut guard);
+        metrics::build_session_dag(scan, &session_id)
     }
 
     #[tauri::command]
@@ -294,6 +315,8 @@ pub fn run() {
             commands::scan_all,
             commands::get_dashboard,
             commands::get_token_usage,
+            commands::get_sessions_overview,
+            commands::get_session_dag,
             commands::get_session_detail,
             commands::get_settings,
             commands::save_settings,
