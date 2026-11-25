@@ -38,6 +38,8 @@ export interface SessionsCallbacks {
   onRetryDag: (sessionId: string) => void;
 }
 
+const TOP_SESSIONS_LIMIT = 5;
+
 const PERIOD_OPTIONS: Array<{ value: TimePeriod; label: string }> = [
   { value: "1d", label: "Last 24h" },
   { value: "1w", label: "Last 7 days" },
@@ -174,22 +176,6 @@ function renderDagPanel(
           ${linkedHtml}
         </div>
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px">
-          <div class="dag-legend" aria-label="Edge legend">
-            <span style="display:inline-flex;align-items:center;gap:6px">
-              <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden="true">
-                <line x1="1" y1="5" x2="18" y2="5" stroke="var(--border-divider)" stroke-width="1.5" />
-                <path d="M 16 2 L 22 5 L 16 8 Z" fill="var(--text-muted)" />
-              </svg>
-              <span>Dispatch</span>
-            </span>
-            <span style="display:inline-flex;align-items:center;gap:6px">
-              <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden="true">
-                <line x1="1" y1="5" x2="18" y2="5" stroke="var(--text-muted)" stroke-width="1.4" stroke-dasharray="4 3" />
-                <path d="M 16 2 L 22 5 L 16 8 Z" fill="var(--text-muted)" />
-              </svg>
-              <span>Feedback</span>
-            </span>
-          </div>
           <button type="button" class="dag-close-btn" id="dag-close-btn" aria-label="Close orchestration DAG">Close</button>
         </div>
       </div>
@@ -220,7 +206,10 @@ export function renderSessions(
   const windowCaption = payload.windowStart
     ? `${payload.windowStart} – ${payload.windowEnd}`
     : payload.windowEnd;
-  const sessionCountLabel = `${payload.sessions.length} ${payload.sessions.length === 1 ? "session" : "sessions"}`;
+  const sessionCountLabel =
+    payload.sessions.length > TOP_SESSIONS_LIMIT
+      ? `Showing top ${TOP_SESSIONS_LIMIT} of ${payload.sessions.length} sessions`
+      : `${payload.sessions.length} ${payload.sessions.length === 1 ? "session" : "sessions"}`;
   const headerCaption = `${windowCaption} · ${sessionCountLabel}`;
 
   const projectList =
@@ -242,9 +231,10 @@ export function renderSessions(
   ].join("");
 
   const sortedRows = sortSessionRows(payload.sessions, sort);
+  const visibleRows = sortedRows.slice(0, TOP_SESSIONS_LIMIT);
 
   const tableContentHtml =
-    sortedRows.length === 0
+    visibleRows.length === 0
       ? `
         <div class="tu-empty-table">
           <div>No sessions match the current filters.</div>
@@ -257,7 +247,7 @@ export function renderSessions(
       `
       : `
         <div class="tu-table-wrap">
-          <table class="tu-table">
+          <table class="tu-table sess-table-compact">
             <thead>
               <tr>
                 <th>Session</th>
@@ -281,7 +271,7 @@ export function renderSessions(
               </tr>
             </thead>
             <tbody>
-              ${sortedRows
+              ${visibleRows
                 .map((row) => {
                   const isSelected = selectedSessionId === row.sessionId;
                   const linkedBadgeHtml =
@@ -297,7 +287,7 @@ export function renderSessions(
                     <tr class="sess-row${isSelected ? " is-selected" : ""}">
                       <td>
                         <div class="sess-title-cell">
-                          <button type="button" class="sess-name-btn" data-session-id="${escapeHtml(row.sessionId)}" aria-pressed="${isSelected ? "true" : "false"}">${escapeHtml(row.title)}</button>
+                          <button type="button" class="sess-name-btn" data-session-id="${escapeHtml(row.sessionId)}" title="${escapeHtml(row.title)}" aria-pressed="${isSelected ? "true" : "false"}">${escapeHtml(row.title)}</button>
                           ${renderRolePill(row.role)}
                           ${linkedBadgeHtml}
                         </div>
@@ -346,7 +336,7 @@ export function renderSessions(
         </div>
       </div>
 
-      <section class="tu-table-card" aria-label="Sessions list">
+      <section class="tu-table-card sess-table-card" aria-label="Sessions list">
         ${tableContentHtml}
       </section>
 

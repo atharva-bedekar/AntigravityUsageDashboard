@@ -2290,6 +2290,23 @@ table.data-table tbody tr.subagent-child {
    SESSIONS OVERVIEW & ORCHESTRATION DAG
    ========================================================================== */
 
+.sess-table-card .tu-table-head {
+  padding: 10px 14px;
+}
+
+.sess-table-compact {
+  font-size: 12px;
+}
+
+.sess-table-compact thead th {
+  padding: 7px 10px;
+  font-size: 11.5px;
+}
+
+.sess-table-compact tbody td {
+  padding: 6px 10px;
+}
+
 .sess-row {
   transition: background 120ms ease;
 }
@@ -2306,15 +2323,20 @@ table.data-table tbody tr.subagent-child {
 .sess-title-cell {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   min-width: 0;
 }
 
 .sess-name-btn {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: none;
   border: none;
-  padding: 4px 0;
+  padding: 2px 0;
   margin: 0;
   font: inherit;
   font-weight: 500;
@@ -2408,15 +2430,6 @@ table.data-table tbody tr.subagent-child {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.dag-legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 .dag-close-btn {
   min-height: 32px;
   padding: 0 10px;
@@ -2460,31 +2473,59 @@ table.data-table tbody tr.subagent-child {
   white-space: nowrap;
 }
 
-.dag-scroll-wrap {
-  overflow-x: auto;
-  max-width: 100%;
+.dag-plan-pill-rect {
+  fill: var(--bg-subtle);
+  stroke: var(--border-card);
+  stroke-width: 1;
+}
+
+.dag-plan-pill-text {
+  fill: var(--text-standard);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.dag-canvas-wrap {
   background: var(--bg-canvas);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-input);
+  overflow: hidden;
+}
+
+.dag-scroll-wrap {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .dag-canvas-stage {
   position: relative;
   display: inline-block;
   min-width: 100%;
-  min-height: 220px;
+  min-height: 260px;
 }
 
-.dag-cluster-box {
-  fill: var(--bg-surface);
-  fill-opacity: 0.45;
-  stroke: var(--border-card);
+.dag-ring-orbit {
+  fill: none;
+  stroke: var(--border-subtle);
   stroke-width: 1;
+  stroke-dasharray: 3 5;
 }
 
-.dag-cluster-box.is-active {
-  stroke: var(--focus-ring);
-  stroke-width: 1.5;
+.dag-ring-orbit.is-active {
+  stroke: var(--cli-blue);
+  stroke-opacity: 0.38;
+}
+
+.dag-cluster-subtitle {
+  fill: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dag-cluster-subtitle.is-active {
+  fill: var(--cli-blue);
 }
 
 .dag-node {
@@ -2506,49 +2547,69 @@ table.data-table tbody tr.subagent-child {
   stroke-width: 1.5;
 }
 
-.dag-node-badge {
-  text-transform: uppercase;
+.dag-badge-dot {
+  stroke: none;
 }
 
-.dag-stripe-planner,
-.dag-stripe-orchestrator {
+.dag-badge-ring {
+  fill: none;
+  stroke-opacity: 0.35;
+}
+
+.dag-badge-planner,
+.dag-badge-orchestrator,
+.dag-badge-main {
   fill: var(--cli-blue);
-  background: var(--cli-blue);
+  stroke: var(--cli-blue);
 }
 
-.dag-stripe-main {
-  fill: var(--text-strong);
-  background: var(--text-strong);
-}
-
-.dag-stripe-researcher {
+.dag-badge-researcher {
   fill: var(--data-new);
-  background: var(--data-new);
+  stroke: var(--data-new);
 }
 
-.dag-stripe-plan-critic {
+.dag-badge-plan-critic {
   fill: var(--status-warn);
-  background: var(--status-warn);
+  stroke: var(--status-warn);
 }
 
-.dag-stripe-implementer {
+.dag-badge-implementer {
   fill: var(--status-ok);
-  background: var(--status-ok);
+  stroke: var(--status-ok);
 }
 
-.dag-stripe-code-reviewer {
+.dag-badge-code-reviewer {
   fill: var(--source-cli);
-  background: var(--source-cli);
+  stroke: var(--source-cli);
 }
 
-.dag-stripe-verifier {
+.dag-badge-verifier {
   fill: var(--source-custom);
-  background: var(--source-custom);
+  stroke: var(--source-custom);
 }
 
-.dag-stripe-default {
+.dag-badge-default {
   fill: var(--text-muted);
-  background: var(--text-muted);
+  stroke: var(--text-muted);
+}
+
+.dag-legend-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.dag-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .dag-tooltip {
@@ -2604,5 +2665,11 @@ table.data-table tbody tr.subagent-child {
   .sess-name-btn,
   .dag-close-btn {
     min-height: 44px;
+  }
+
+  .sess-name-btn {
+    display: inline-block;
+    padding-top: 12px;
+    padding-bottom: 12px;
   }
 }

@@ -7,32 +7,50 @@ import {
   formatTokens,
 } from "./format.ts";
 
-const NODE_W = 204;
-const NODE_H = 74;
-const COL_GAP = 64;
-const ROW_GAP = 18;
-const CLUSTER_GAP = 148;
-const CANVAS_PAD_X = 24;
-const CANVAS_PAD_Y = 24;
-const CLUSTER_PAD_X = 18;
-const CLUSTER_PAD_TOP = 38;
-const CLUSTER_PAD_BOTTOM = 18;
-const FEEDBACK_BAND_BASE = 32;
-const FEEDBACK_BAND_STEP = 26;
+const PILL_W = 164;
+const PILL_H = 38;
+const PILL_RX = 19;
+const HALO_PAD = 4;
+const HALO_RX = 23;
+
+const CANVAS_PAD_X = 28;
+const CANVAS_PAD_TOP = 24;
+const CANVAS_PAD_BOTTOM = 26;
+const MIN_SVG_HEIGHT = 260;
+
+const SUBTITLE_AREA_H = 28;
+const BRIDGE_ARC_CLEARANCE = 46;
 
 interface PositionedNode {
   node: DagNode;
-  x: number;
-  y: number;
+  /** Center X relative to ring center (0, 0). */
+  cx: number;
+  /** Center Y relative to ring center (0, 0). */
+  cy: number;
 }
 
-interface ClusterLayout {
+interface RingLayout {
   graph: SessionDagGraph;
-  boxW: number;
-  boxH: number;
-  nodesTopOffset: number;
+  rx: number;
+  ry: number;
+  hasSubagents: boolean;
+  leftExtent: number;
+  rightExtent: number;
+  topExtentFromHub: number;
+  bottomExtentFromHub: number;
   nodes: PositionedNode[];
-  posById: Map<string, PositionedNode>;
+}
+
+interface AbsNodePos {
+  node: DagNode;
+  /** Top-left X of pill in SVG coordinates. */
+  x: number;
+  /** Top-left Y of pill in SVG coordinates. */
+  y: number;
+  /** Center X of pill in SVG coordinates. */
+  cx: number;
+  /** Center Y of pill in SVG coordinates. */
+  cy: number;
 }
 
 function truncateLabel(text: string, maxLen: number): string {
@@ -40,7 +58,7 @@ function truncateLabel(text: string, maxLen: number): string {
   return `${text.slice(0, maxLen - 1).trimEnd()}…`;
 }
 
-function agentStripeKey(agentType: string): string {
+function agentBadgeKey(agentType: string): string {
   const norm = agentType.trim().toLowerCase().replace(/[\s_]+/g, "-");
   switch (norm) {
     case "planner":
@@ -67,148 +85,316 @@ function agentStripeKey(agentType: string): string {
   }
 }
 
-function layoutCluster(graph: SessionDagGraph, showClusterBox: boolean): ClusterLayout {
-  const maxWave = Math.max(
-    graph.waveCount,
-    ...graph.nodes.map((n) => Math.max(0, n.waveIndex)),
-    0
-  );
-  const columns: DagNode[][] = Array.from({ length: maxWave + 1 }, () => []);
-  for (const node of graph.nodes) {
-    const colIdx = Math.max(0, node.waveIndex);
-    columns[colIdx].push(node);
+function formatPillLabel(node: DagNode): string {
+  if (node.isRoot) {
+    const raw = node.agentType.trim() || node.roleLabel.trim() || "Main Agent";
+    return truncateLabel(raw, 16);
+  }
+  const trimmedRole = node.roleLabel.trim();
+  const trimmedType = node.agentType.trim();
+  const raw =
+    trimmedRole && trimmedRole.toLowerCase() !== trimmedType.toLowerCase()
+      ? trimmedRole
+      : trimmedType || "subagent";
+  return truncateLabel(raw, 16);
+}
+
+function layoutRingCluster(graph: SessionDagGraph): RingLayout {
+  const rootNode = graph.nodes.find((n) => n.isRoot) ?? graph.nodes[0];
+  const subagents = graph.nodes
+    .filter((n) => n.nodeId !== rootNode.nodeId)
+    .sort((a, b) => a.waveIndex - b.waveIndex || a.nodeId.localeCompare(b.nodeId));
+
+  if (subagents.length === 0) {
+    const halfW = PILL_W / 2 + HALO_PAD + 2;
+    const halfH = PILL_H / 2 + HALO_PAD + 2;
+    return {
+      graph,
+      rx: 0,
+      ry: 0,
+      hasSubagents: false,
+      leftExtent: halfW,
+      rightExtent: halfW,
+      topExtentFromHub: halfH,
+      bottomExtentFromHub: halfH,
+      nodes: [{ node: rootNode, cx: 0, cy: 0 }],
+    };
   }
 
-  const maxRows = Math.max(1, ...columns.map((col) => col.length));
-  const nodesHeight = maxRows * NODE_H + (maxRows - 1) * ROW_GAP;
-  const numCols = maxWave + 1;
-  const nodesWidth = numCols * NODE_W + (numCols - 1) * COL_GAP;
+  let rx = 185;
+  let ry = 115;
+  if (subagents.length >= 9) {
+    rx = 270 + (subagents.length - 8) * 14;
+    ry = 175 + (subagents.length - 8) * 10;
+  } else if (subagents.length >= 5) {
+    rx = 230;
+    ry = 145;
+  }
 
-  const feedbackCount = graph.edges.filter((e) => e.kind === "feedback").length;
-  const feedbackExtraTop =
-    feedbackCount > 0 ? FEEDBACK_BAND_BASE + (feedbackCount - 1) * FEEDBACK_BAND_STEP : 0;
+  const startDeg = -40;
+  const endDeg = 220;
+  const spanDeg = endDeg - startDeg;
+  const anglesRad =
+    subagents.length === 1
+      ? [Math.PI / 2]
+      : subagents.map((_, idx) => {
+          const deg = startDeg + ((idx + 0.5) / subagents.length) * spanDeg;
+          return (deg * Math.PI) / 180;
+        });
 
-  const padX = showClusterBox ? CLUSTER_PAD_X : 0;
-  const padTop = (showClusterBox ? CLUSTER_PAD_TOP : 0) + feedbackExtraTop;
-  const padBottom = showClusterBox ? CLUSTER_PAD_BOTTOM : 0;
+  const minGapX = PILL_W + 14;
+  const minGapY = PILL_H + 10;
 
-  const boxW = nodesWidth + padX * 2;
-  const boxH = nodesHeight + padTop + padBottom;
+  for (let step = 0; step < 24; step += 1) {
+    const candidates: Array<{ cx: number; cy: number }> = [{ cx: 0, cy: -ry }];
+    for (const theta of anglesRad) {
+      candidates.push({
+        cx: rx * Math.cos(theta),
+        cy: ry * Math.sin(theta),
+      });
+    }
 
-  const nodes: PositionedNode[] = [];
-  const posById = new Map<string, PositionedNode>();
+    let overlaps = false;
+    for (let i = 0; i < candidates.length && !overlaps; i += 1) {
+      for (let j = i + 1; j < candidates.length; j += 1) {
+        const dx = Math.abs(candidates[i].cx - candidates[j].cx);
+        const dy = Math.abs(candidates[i].cy - candidates[j].cy);
+        if (dx < minGapX && dy < minGapY) {
+          overlaps = true;
+          break;
+        }
+      }
+    }
+    if (!overlaps) break;
+    rx *= 1.08;
+    ry *= 1.08;
+  }
 
-  columns.forEach((colNodes, colIdx) => {
-    if (colNodes.length === 0) return;
-    const colHeight = colNodes.length * NODE_H + (colNodes.length - 1) * ROW_GAP;
-    const colStartY = padTop + (nodesHeight - colHeight) / 2;
-    const colX = padX + colIdx * (NODE_W + COL_GAP);
-
-    colNodes.forEach((node, rowIdx) => {
-      const positioned: PositionedNode = {
-        node,
-        x: colX,
-        y: colStartY + rowIdx * (NODE_H + ROW_GAP),
-      };
-      nodes.push(positioned);
-      posById.set(node.nodeId, positioned);
+  const nodes: PositionedNode[] = [{ node: rootNode, cx: 0, cy: -ry }];
+  subagents.forEach((node, idx) => {
+    const theta = anglesRad[idx];
+    nodes.push({
+      node,
+      cx: rx * Math.cos(theta),
+      cy: ry * Math.sin(theta),
     });
   });
 
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const pos of nodes) {
+    const pad = pos.node.isRoot ? HALO_PAD + 2 : 2;
+    minX = Math.min(minX, pos.cx - PILL_W / 2 - pad);
+    maxX = Math.max(maxX, pos.cx + PILL_W / 2 + pad);
+    maxY = Math.max(maxY, pos.cy + PILL_H / 2 + pad);
+  }
+
+  const hubY = -ry;
+  const topExtentFromHub = PILL_H / 2 + HALO_PAD + 2;
+  const bottomExtentFromHub = Math.max(topExtentFromHub, maxY - hubY);
+
   return {
     graph,
-    boxW,
-    boxH,
-    nodesTopOffset: padTop,
+    rx,
+    ry,
+    hasSubagents: true,
+    leftExtent: Math.max(PILL_W / 2 + HALO_PAD + 2, -minX),
+    rightExtent: Math.max(PILL_W / 2 + HALO_PAD + 2, maxX),
+    topExtentFromHub,
+    bottomExtentFromHub,
     nodes,
-    posById,
+  };
+}
+
+/**
+ * Computes the boundary intersection point on a horizontal capsule pill centered at (cx, cy)
+ * along the ray toward (targetX, targetY).
+ */
+function capsuleBoundaryPoint(
+  cx: number,
+  cy: number,
+  targetX: number,
+  targetY: number,
+  w: number,
+  h: number
+): { x: number; y: number } {
+  const dx = targetX - cx;
+  const dy = targetY - cy;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-4) {
+    return { x: cx, y: cy };
+  }
+  const ux = dx / len;
+  const uy = dy / len;
+  const r = h / 2;
+  const s = Math.max(0, w / 2 - r);
+
+  if (Math.abs(uy) > 1e-4) {
+    const tFlat = r / Math.abs(uy);
+    const xFlat = ux * tFlat;
+    if (Math.abs(xFlat) <= s) {
+      return {
+        x: cx + xFlat,
+        y: cy + (uy > 0 ? r : -r),
+      };
+    }
+  }
+
+  const sx = ux >= 0 ? s : -s;
+  const b = ux * sx;
+  const c = sx * sx - r * r;
+  const disc = Math.max(0, b * b - c);
+  const t = b + Math.sqrt(disc);
+  return {
+    x: cx + t * ux,
+    y: cy + t * uy,
   };
 }
 
 function renderClusterEdges(
-  edges: DagEdge[],
-  posById: Map<string, PositionedNode>,
-  offsetX: number,
-  offsetY: number,
-  clusterNodesMinY: number
+  graph: SessionDagGraph,
+  absById: Map<string, AbsNodePos>
 ): string {
-  let feedbackIdx = 0;
+  const maxSubagentTotal = Math.max(
+    0,
+    ...graph.nodes.filter((n) => !n.isRoot).map((n) => n.total)
+  );
+  const maxEdgeTurns = Math.max(0, ...graph.edges.map((e) => e.messageTurns));
 
-  return edges
-    .map((edge) => {
-      const fromPos = posById.get(edge.fromNodeId);
-      const toPos = posById.get(edge.toNodeId);
+  return graph.edges
+    .map((edge: DagEdge) => {
+      if (edge.fromNodeId === edge.toNodeId) return "";
+      const fromPos = absById.get(edge.fromNodeId);
+      const toPos = absById.get(edge.toNodeId);
       if (!fromPos || !toPos) return "";
 
+      const dx = toPos.cx - fromPos.cx;
+      const dy = toPos.cy - fromPos.cy;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return "";
+
+      const nx = -dy / len;
+      const ny = dx / len;
+
+      const fromPad = fromPos.node.isRoot ? HALO_PAD * 2 + 2 : 2;
+      const toPad = toPos.node.isRoot ? HALO_PAD * 2 + 4 : 4;
+
       if (edge.kind === "feedback") {
-        const x1 = offsetX + fromPos.x + NODE_W / 2;
-        const y1 = offsetY + fromPos.y;
-        const x2 = offsetX + toPos.x + NODE_W / 2;
-        const y2 = offsetY + toPos.y - 1;
+        if (edge.messageTurns <= 0) return "";
 
-        const apexY = offsetY + clusterNodesMinY - 22 - feedbackIdx * FEEDBACK_BAND_STEP;
-        feedbackIdx += 1;
-        // Solve cubic Bezier y(0.5) = 0.125*(y1 + y2) + 0.75*ctrlY = apexY
-        const ctrlY = (apexY - 0.125 * (y1 + y2)) / 0.75;
-        const midX = (x1 + x2) / 2;
+        const curveOffset = Math.min(34, Math.max(18, len * 0.14));
+        const ctrlX = (fromPos.cx + toPos.cx) / 2 + nx * curveOffset;
+        const ctrlY = (fromPos.cy + toPos.cy) / 2 + ny * curveOffset;
 
-        const turnText = `${edge.messageTurns} turn${edge.messageTurns === 1 ? "" : "s"}`;
-        const pillW = Math.max(54, turnText.length * 6.8 + 16);
-        const pillH = 20;
+        const p1 = capsuleBoundaryPoint(
+          fromPos.cx,
+          fromPos.cy,
+          ctrlX,
+          ctrlY,
+          PILL_W + fromPad,
+          PILL_H + fromPad
+        );
+        const p2 = capsuleBoundaryPoint(
+          toPos.cx,
+          toPos.cy,
+          ctrlX,
+          ctrlY,
+          PILL_W + toPad,
+          PILL_H + toPad
+        );
+
+        const midX = 0.25 * p1.x + 0.5 * ctrlX + 0.25 * p2.x;
+        const midY = 0.25 * p1.y + 0.5 * ctrlY + 0.25 * p2.y;
+        const turnText = String(edge.messageTurns);
+        const badgeW = Math.max(18, turnText.length * 7 + 8);
 
         return `
           <g class="dag-edge-feedback">
-            <path d="M ${x1} ${y1} C ${x1} ${ctrlY}, ${x2} ${ctrlY}, ${x2} ${y2}" fill="none" stroke="var(--text-muted)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#dag-arrow-muted)" />
-            <rect x="${midX - pillW / 2}" y="${apexY - pillH / 2}" width="${pillW}" height="${pillH}" rx="10" fill="var(--bg-subtle)" stroke="var(--border-card)" stroke-width="1" />
-            <text x="${midX}" y="${apexY + 3.5}" text-anchor="middle" fill="var(--text-standard)" font-size="10.5" font-family="var(--font-mono)" style="font-variant-numeric:tabular-nums">${escapeHtml(turnText)}</text>
+            <path d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Q ${ctrlX.toFixed(1)} ${ctrlY.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" fill="none" stroke="var(--text-muted)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#dag-arrow-muted)" />
+            <rect x="${(midX - badgeW / 2).toFixed(1)}" y="${(midY - 9).toFixed(1)}" width="${badgeW}" height="18" rx="9" fill="var(--bg-canvas)" stroke="var(--border-card)" stroke-width="1" />
+            <text x="${midX.toFixed(1)}" y="${(midY + 3.5).toFixed(1)}" text-anchor="middle" fill="var(--text-standard)" font-size="10.5" font-family="var(--font-mono)" style="font-variant-numeric:tabular-nums">${escapeHtml(turnText)}</text>
           </g>
         `;
       }
 
-      const x1 = offsetX + fromPos.x + NODE_W;
-      const y1 = offsetY + fromPos.y + NODE_H / 2;
-      const x2 = offsetX + toPos.x;
-      const y2 = offsetY + toPos.y + NODE_H / 2;
-      const dx = Math.max(32, Math.abs(x2 - x1) * 0.48);
+      const curveOffset = Math.min(26, Math.max(12, len * 0.09));
+      const ctrlX = (fromPos.cx + toPos.cx) / 2 + nx * curveOffset;
+      const ctrlY = (fromPos.cy + toPos.cy) / 2 + ny * curveOffset;
 
-      return `<path class="dag-edge-dispatch" d="M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}" fill="none" stroke="var(--border-divider)" stroke-width="1.5" marker-end="url(#dag-arrow)" />`;
+      const p1 = capsuleBoundaryPoint(
+        fromPos.cx,
+        fromPos.cy,
+        ctrlX,
+        ctrlY,
+        PILL_W + fromPad,
+        PILL_H + fromPad
+      );
+      const p2 = capsuleBoundaryPoint(
+        toPos.cx,
+        toPos.cy,
+        ctrlX,
+        ctrlY,
+        PILL_W + toPad,
+        PILL_H + toPad
+      );
+
+      const weightRatio =
+        maxSubagentTotal > 0
+          ? Math.min(1, Math.max(0, toPos.node.total / maxSubagentTotal))
+          : maxEdgeTurns > 0
+            ? Math.min(1, Math.max(0, edge.messageTurns / maxEdgeTurns))
+            : 0;
+      const strokeWidth = (1.3 + weightRatio * 2.1).toFixed(2);
+
+      return `<path class="dag-edge-dispatch" d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Q ${ctrlX.toFixed(1)} ${ctrlY.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" fill="none" stroke="var(--border-divider)" stroke-width="${strokeWidth}" marker-end="url(#dag-arrow)" />`;
     })
     .join("");
 }
 
 function renderClusterNodes(
-  nodes: PositionedNode[],
-  offsetX: number,
-  offsetY: number,
+  layout: RingLayout,
+  ringCenterX: number,
+  ringCenterY: number,
   numberFormat: "compact" | "full"
-): { svg: string; absPositions: Map<string, { node: DagNode; x: number; y: number }> } {
-  const absPositions = new Map<string, { node: DagNode; x: number; y: number }>();
+): { svg: string; absById: Map<string, AbsNodePos> } {
+  const absById = new Map<string, AbsNodePos>();
 
-  const svg = nodes
-    .map(({ node, x, y }) => {
-      const absX = offsetX + x;
-      const absY = offsetY + y;
-      absPositions.set(node.nodeId, { node, x: absX, y: absY });
+  const svg = layout.nodes
+    .map(({ node, cx, cy }) => {
+      const absCx = ringCenterX + cx;
+      const absCy = ringCenterY + cy;
+      const absX = absCx - PILL_W / 2;
+      const absY = absCy - PILL_H / 2;
+      absById.set(node.nodeId, { node, x: absX, y: absY, cx: absCx, cy: absCy });
 
-      const stripeKey = agentStripeKey(node.agentType);
+      const badgeKey = agentBadgeKey(node.agentType);
+      const label = formatPillLabel(node);
       const displayRole = node.roleLabel.trim() || node.agentType;
-      const shortRole = truncateLabel(displayRole, 24);
-      const footerText = `${formatTokens(node.total, numberFormat)} · ${formatDuration(node.wallTimeSecs)}`;
       const ariaLabel = `${node.agentType}: ${displayRole}, ${formatTokens(node.total, numberFormat)} tokens, ${formatDuration(node.wallTimeSecs)}`;
 
+      const haloSvg = node.isRoot
+        ? `<rect class="dag-hub-halo" x="-${HALO_PAD}" y="-${HALO_PAD}" width="${PILL_W + HALO_PAD * 2}" height="${PILL_H + HALO_PAD * 2}" rx="${HALO_RX}" fill="none" stroke="var(--border-divider)" stroke-width="1" stroke-dasharray="3 3" />`
+        : "";
+
+      const centerDotSvg = node.isRoot
+        ? `<circle cx="18" cy="${PILL_H / 2}" r="2.3" fill="var(--bg-surface)" />`
+        : "";
+
       return `
-        <g class="dag-node" data-node-id="${escapeHtml(node.nodeId)}" transform="translate(${absX}, ${absY})" tabindex="0" role="button" aria-label="${escapeHtml(ariaLabel)}">
-          <rect class="dag-node-card" x="0" y="0" width="${NODE_W}" height="${NODE_H}" rx="8" fill="var(--bg-surface)" stroke="var(--border-card)" stroke-width="1" />
-          <rect x="0.5" y="0.5" width="4.5" height="${NODE_H - 1}" clip-path="url(#dag-card-clip)" class="dag-stripe-${escapeHtml(stripeKey)}" />
-          <text class="dag-node-badge" x="14" y="21" fill="var(--text-muted)" font-size="10.5" font-family="var(--font-mono)" font-weight="600" letter-spacing="0.04em">${escapeHtml(node.agentType)}</text>
-          <text x="14" y="41" fill="var(--text-strong)" font-size="12.5" font-weight="500">${escapeHtml(shortRole)}</text>
-          <text x="14" y="59" fill="var(--text-muted)" font-size="11.5" font-family="var(--font-mono)" style="font-variant-numeric:tabular-nums">${escapeHtml(footerText)}</text>
+        <g class="dag-node${node.isRoot ? " is-root" : ""}" data-node-id="${escapeHtml(node.nodeId)}" transform="translate(${absX.toFixed(1)}, ${absY.toFixed(1)})" tabindex="0" role="button" aria-label="${escapeHtml(ariaLabel)}">
+          ${haloSvg}
+          <rect class="dag-node-card" x="0" y="0" width="${PILL_W}" height="${PILL_H}" rx="${PILL_RX}" fill="var(--bg-surface)" stroke="var(--border-card)" stroke-width="1" />
+          <circle class="dag-badge-ring dag-badge-${escapeHtml(badgeKey)}" cx="18" cy="${PILL_H / 2}" r="9.5" fill="none" stroke-width="1.2" />
+          <circle class="dag-badge-dot dag-badge-${escapeHtml(badgeKey)}" cx="18" cy="${PILL_H / 2}" r="7" />
+          ${centerDotSvg}
+          <text class="dag-node-label" x="35" y="${(PILL_H / 2 + 4).toFixed(1)}" fill="var(--text-strong)" font-size="12.5" font-weight="500">${escapeHtml(label)}</text>
         </g>
       `;
     })
     .join("");
 
-  return { svg, absPositions };
+  return { svg, absById };
 }
 
 function buildTooltipHtml(node: DagNode, numberFormat: "compact" | "full"): string {
@@ -255,8 +441,8 @@ function buildTooltipHtml(node: DagNode, numberFormat: "compact" | "full"): stri
 }
 
 /**
- * Renders an orchestration DAG (single session or linked Planner -> Orchestrator pair)
- * into `container` using deterministic SVG layout and accessible floating telemetry tooltips.
+ * Renders an orchestration DAG (single session or linked Planner -> Orchestrator swarm rings)
+ * into `container` using an elliptical Swarm constellation layout and accessible telemetry tooltips.
  */
 export function renderOrchestrationDag(
   container: HTMLElement,
@@ -269,150 +455,211 @@ export function renderOrchestrationDag(
   }
 
   const isLinked = payload.secondary !== null && payload.link !== null;
-  const primaryLayout = layoutCluster(payload.primary, isLinked);
+  const primaryLayout = layoutRingCluster(payload.primary);
 
   let svgWidth = 0;
   let svgHeight = 0;
-  let clustersSvg = "";
+  let orbitsSvg = "";
   let bridgeSvg = "";
   let edgesSvg = "";
   let nodesSvg = "";
-  const allAbsPositions = new Map<string, { node: DagNode; x: number; y: number }>();
+  const allAbsPositions = new Map<string, AbsNodePos>();
 
   if (isLinked && payload.secondary && payload.link) {
-    const secondaryLayout = layoutCluster(payload.secondary, true);
-    const sharedBoxH = Math.max(primaryLayout.boxH, secondaryLayout.boxH);
+    const secondaryLayout = layoutRingCluster(payload.secondary);
 
-    const leftBoxX = CANVAS_PAD_X;
-    const leftBoxY = CANVAS_PAD_Y;
-    const leftExtraY = (sharedBoxH - primaryLayout.boxH) / 2;
+    const ringGap = Math.max(
+      64,
+      360 - primaryLayout.rightExtent - secondaryLayout.leftExtent
+    );
+    const hubCenterY = CANVAS_PAD_TOP + SUBTITLE_AREA_H + BRIDGE_ARC_CLEARANCE;
 
-    const rightBoxX = leftBoxX + primaryLayout.boxW + CLUSTER_GAP;
-    const rightBoxY = CANVAS_PAD_Y;
-    const rightExtraY = (sharedBoxH - secondaryLayout.boxH) / 2;
+    const leftCx = CANVAS_PAD_X + primaryLayout.leftExtent;
+    const leftCy = hubCenterY + primaryLayout.ry;
+
+    const rightCx =
+      leftCx + primaryLayout.rightExtent + ringGap + secondaryLayout.leftExtent;
+    const rightCy = hubCenterY + secondaryLayout.ry;
 
     const leftActive = payload.selectedSessionId === payload.primary.sessionId;
     const rightActive = payload.selectedSessionId === payload.secondary.sessionId;
 
-    const leftLabel = `${payload.primary.role.toUpperCase()} · ${truncateLabel(payload.primary.title, 34)}`;
-    const rightLabel = `${payload.secondary.role.toUpperCase()} · ${truncateLabel(payload.secondary.title, 34)}`;
+    const leftSubtitle = `${payload.primary.role.toUpperCase()} · ${truncateLabel(payload.primary.title, 28)}`;
+    const rightSubtitle = `${payload.secondary.role.toUpperCase()} · ${truncateLabel(payload.secondary.title, 28)}`;
+    const subtitleY = CANVAS_PAD_TOP + 12;
 
-    clustersSvg = `
+    const leftOrbit = primaryLayout.hasSubagents
+      ? `<ellipse class="dag-ring-orbit${leftActive ? " is-active" : ""}" cx="${leftCx.toFixed(1)}" cy="${leftCy.toFixed(1)}" rx="${primaryLayout.rx.toFixed(1)}" ry="${primaryLayout.ry.toFixed(1)}" />`
+      : "";
+    const rightOrbit = secondaryLayout.hasSubagents
+      ? `<ellipse class="dag-ring-orbit${rightActive ? " is-active" : ""}" cx="${rightCx.toFixed(1)}" cy="${rightCy.toFixed(1)}" rx="${secondaryLayout.rx.toFixed(1)}" ry="${secondaryLayout.ry.toFixed(1)}" />`
+      : "";
+
+    orbitsSvg = `
       <g class="dag-cluster">
-        <rect class="dag-cluster-box${leftActive ? " is-active" : ""}" x="${leftBoxX}" y="${leftBoxY}" width="${primaryLayout.boxW}" height="${sharedBoxH}" rx="12" />
-        <text x="${leftBoxX + 14}" y="${leftBoxY + 22}" fill="${leftActive ? "var(--cli-blue)" : "var(--text-muted)"}" font-size="10.5" font-family="var(--font-mono)" font-weight="600" letter-spacing="0.04em">${escapeHtml(leftLabel)}</text>
+        <text class="dag-cluster-subtitle${leftActive ? " is-active" : ""}" x="${leftCx.toFixed(1)}" y="${subtitleY}" text-anchor="middle">${escapeHtml(leftSubtitle)}</text>
+        ${leftOrbit}
       </g>
       <g class="dag-cluster">
-        <rect class="dag-cluster-box${rightActive ? " is-active" : ""}" x="${rightBoxX}" y="${rightBoxY}" width="${secondaryLayout.boxW}" height="${sharedBoxH}" rx="12" />
-        <text x="${rightBoxX + 14}" y="${rightBoxY + 22}" fill="${rightActive ? "var(--cli-blue)" : "var(--text-muted)"}" font-size="10.5" font-family="var(--font-mono)" font-weight="600" letter-spacing="0.04em">${escapeHtml(rightLabel)}</text>
+        <text class="dag-cluster-subtitle${rightActive ? " is-active" : ""}" x="${rightCx.toFixed(1)}" y="${subtitleY}" text-anchor="middle">${escapeHtml(rightSubtitle)}</text>
+        ${rightOrbit}
       </g>
     `;
 
-    const bridgeY = CANVAS_PAD_Y + sharedBoxH / 2;
-    const bridgeX1 = leftBoxX + primaryLayout.boxW + 8;
-    const bridgeX2 = rightBoxX - 10;
-    const bridgeMidX = leftBoxX + primaryLayout.boxW + CLUSTER_GAP / 2;
-    const planLabel = truncateLabel(payload.link.planName, 19);
-    const pillW = Math.min(CLUSTER_GAP - 14, Math.max(76, planLabel.length * 6.5 + 18));
+    const leftRendered = renderClusterNodes(
+      primaryLayout,
+      leftCx,
+      leftCy,
+      numberFormat
+    );
+    const rightRendered = renderClusterNodes(
+      secondaryLayout,
+      rightCx,
+      rightCy,
+      numberFormat
+    );
+
+    nodesSvg = leftRendered.svg + rightRendered.svg;
+    leftRendered.absById.forEach((v, k) => allAbsPositions.set(k, v));
+    rightRendered.absById.forEach((v, k) => allAbsPositions.set(k, v));
+
+    edgesSvg =
+      renderClusterEdges(payload.primary, leftRendered.absById) +
+      renderClusterEdges(payload.secondary, rightRendered.absById);
+
+    const plannerHubX1 = leftCx + PILL_W / 2 + HALO_PAD + 2;
+    const orchHubX2 = rightCx - PILL_W / 2 - HALO_PAD - 4;
+    const bridgeMidX = (plannerHubX1 + orchHubX2) / 2;
+    const bridgeCtrlY = hubCenterY - 36;
+    const bridgeApexY = hubCenterY - 18;
+
+    const planLabel = truncateLabel(payload.link.planName, 26);
+    const maxPillW = Math.max(88, orchHubX2 - plannerHubX1 - 24);
+    const pillW = Math.min(maxPillW, Math.max(88, planLabel.length * 6.8 + 22));
     const pillH = 22;
+    const pillCenterY = bridgeApexY - 14;
 
     bridgeSvg = `
       <g class="dag-bridge">
         <title>${escapeHtml(payload.link.planName)}</title>
-        <line x1="${bridgeX1}" y1="${bridgeY}" x2="${bridgeX2}" y2="${bridgeY}" stroke="var(--cli-blue)" stroke-width="2" marker-end="url(#dag-arrow-bridge)" />
-        <rect x="${bridgeMidX - pillW / 2}" y="${bridgeY - 26 - pillH / 2}" width="${pillW}" height="${pillH}" rx="11" fill="var(--bg-subtle)" stroke="var(--border-card)" stroke-width="1" />
-        <text x="${bridgeMidX}" y="${bridgeY - 26 + 3.5}" text-anchor="middle" fill="var(--text-standard)" font-size="10.5" font-family="var(--font-mono)">${escapeHtml(planLabel)}</text>
+        <path d="M ${plannerHubX1.toFixed(1)} ${hubCenterY.toFixed(1)} Q ${bridgeMidX.toFixed(1)} ${bridgeCtrlY.toFixed(1)} ${orchHubX2.toFixed(1)} ${hubCenterY.toFixed(1)}" fill="none" stroke="var(--cli-blue)" stroke-width="2" marker-end="url(#dag-arrow-bridge)" />
+        <g class="dag-plan-pill">
+          <rect class="dag-plan-pill-rect" x="${(bridgeMidX - pillW / 2).toFixed(1)}" y="${(pillCenterY - pillH / 2).toFixed(1)}" width="${pillW.toFixed(1)}" height="${pillH}" rx="11" />
+          <text class="dag-plan-pill-text" x="${bridgeMidX.toFixed(1)}" y="${(pillCenterY + 3.5).toFixed(1)}" text-anchor="middle">${escapeHtml(planLabel)}</text>
+        </g>
       </g>
     `;
 
-    edgesSvg =
-      renderClusterEdges(
-        payload.primary.edges,
-        primaryLayout.posById,
-        leftBoxX,
-        leftBoxY + leftExtraY,
-        primaryLayout.nodesTopOffset
-      ) +
-      renderClusterEdges(
-        payload.secondary.edges,
-        secondaryLayout.posById,
-        rightBoxX,
-        rightBoxY + rightExtraY,
-        secondaryLayout.nodesTopOffset
+    const maxBottomExtent = Math.max(
+      primaryLayout.bottomExtentFromHub,
+      secondaryLayout.bottomExtentFromHub
+    );
+    svgWidth = rightCx + secondaryLayout.rightExtent + CANVAS_PAD_X;
+    svgHeight = Math.max(
+      MIN_SVG_HEIGHT,
+      hubCenterY + maxBottomExtent + CANVAS_PAD_BOTTOM
+    );
+  } else {
+    const contentW = primaryLayout.leftExtent + primaryLayout.rightExtent;
+    svgWidth = Math.max(460, CANVAS_PAD_X * 2 + contentW);
+    const ringCenterX = svgWidth / 2;
+
+    if (!primaryLayout.hasSubagents) {
+      svgHeight = MIN_SVG_HEIGHT;
+      const hubCenterY = 122;
+      const rendered = renderClusterNodes(
+        primaryLayout,
+        ringCenterX,
+        hubCenterY,
+        numberFormat
+      );
+      nodesSvg = rendered.svg;
+      rendered.absById.forEach((v, k) => allAbsPositions.set(k, v));
+      edgesSvg = renderClusterEdges(payload.primary, rendered.absById);
+    } else {
+      const hubCenterY = CANVAS_PAD_TOP + primaryLayout.topExtentFromHub + 8;
+      const ringCenterY = hubCenterY + primaryLayout.ry;
+      svgHeight = Math.max(
+        MIN_SVG_HEIGHT,
+        hubCenterY + primaryLayout.bottomExtentFromHub + CANVAS_PAD_BOTTOM
       );
 
-    const leftRendered = renderClusterNodes(
-      primaryLayout.nodes,
-      leftBoxX,
-      leftBoxY + leftExtraY,
-      numberFormat
-    );
-    const rightRendered = renderClusterNodes(
-      secondaryLayout.nodes,
-      rightBoxX,
-      rightBoxY + rightExtraY,
-      numberFormat
-    );
-    nodesSvg = leftRendered.svg + rightRendered.svg;
-    leftRendered.absPositions.forEach((v, k) => allAbsPositions.set(k, v));
-    rightRendered.absPositions.forEach((v, k) => allAbsPositions.set(k, v));
+      orbitsSvg = `
+        <g class="dag-cluster">
+          <ellipse class="dag-ring-orbit" cx="${ringCenterX.toFixed(1)}" cy="${ringCenterY.toFixed(1)}" rx="${primaryLayout.rx.toFixed(1)}" ry="${primaryLayout.ry.toFixed(1)}" />
+        </g>
+      `;
 
-    svgWidth = CANVAS_PAD_X * 2 + primaryLayout.boxW + CLUSTER_GAP + secondaryLayout.boxW;
-    svgHeight = Math.max(240, CANVAS_PAD_Y * 2 + sharedBoxH);
-  } else {
-    const offsetX = CANVAS_PAD_X;
-    const offsetY = CANVAS_PAD_Y;
-
-    edgesSvg = renderClusterEdges(
-      payload.primary.edges,
-      primaryLayout.posById,
-      offsetX,
-      offsetY,
-      primaryLayout.nodesTopOffset
-    );
-    const rendered = renderClusterNodes(primaryLayout.nodes, offsetX, offsetY, numberFormat);
-    nodesSvg = rendered.svg;
-    rendered.absPositions.forEach((v, k) => allAbsPositions.set(k, v));
-
-    svgWidth = Math.max(252, CANVAS_PAD_X * 2 + primaryLayout.boxW);
-    svgHeight = Math.max(220, CANVAS_PAD_Y * 2 + primaryLayout.boxH);
+      const rendered = renderClusterNodes(
+        primaryLayout,
+        ringCenterX,
+        ringCenterY,
+        numberFormat
+      );
+      nodesSvg = rendered.svg;
+      rendered.absById.forEach((v, k) => allAbsPositions.set(k, v));
+      edgesSvg = renderClusterEdges(payload.primary, rendered.absById);
+    }
   }
 
   const soloNote =
-    payload.secondary === null && payload.primary.nodes.length === 1
+    payload.secondary === null && !primaryLayout.hasSubagents
       ? `<div class="dag-empty-note">No subagents spawned in this session</div>`
       : "";
 
   container.innerHTML = `
-    <div class="dag-scroll-wrap">
-      <div class="dag-canvas-stage" style="position:relative">
-        <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" style="display:block" role="img" aria-label="${escapeHtml(payload.primary.title)} orchestration graph">
-          <defs>
-            <clipPath id="dag-card-clip">
-              <rect x="1" y="1" width="${NODE_W - 2}" height="${NODE_H - 2}" rx="7" />
-            </clipPath>
-            <marker id="dag-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--text-muted)" />
-            </marker>
-            <marker id="dag-arrow-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--text-muted)" />
-            </marker>
-            <marker id="dag-arrow-bridge" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-              <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="var(--cli-blue)" />
-            </marker>
-          </defs>
-          ${clustersSvg}
-          ${bridgeSvg}
-          ${edgesSvg}
-          ${nodesSvg}
-        </svg>
-        <div class="dag-tooltip" role="status" aria-live="polite"></div>
+    <div class="dag-canvas-wrap">
+      <div class="dag-scroll-wrap">
+        <div class="dag-canvas-stage" style="position:relative">
+          <svg width="${Math.ceil(svgWidth)}" height="${Math.ceil(svgHeight)}" viewBox="0 0 ${Math.ceil(svgWidth)} ${Math.ceil(svgHeight)}" style="display:block;margin:0 auto" role="img" aria-label="${escapeHtml(payload.primary.title)} orchestration graph">
+            <defs>
+              <marker id="dag-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--text-muted)" />
+              </marker>
+              <marker id="dag-arrow-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--text-muted)" />
+              </marker>
+              <marker id="dag-arrow-bridge" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="var(--cli-blue)" />
+              </marker>
+            </defs>
+            ${orbitsSvg}
+            ${bridgeSvg}
+            ${edgesSvg}
+            ${nodesSvg}
+          </svg>
+          <div class="dag-tooltip" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="dag-legend-footer" aria-label="Graph legend">
+        <span class="dag-legend-item">
+          <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden="true">
+            <line x1="1" y1="5" x2="18" y2="5" stroke="var(--border-divider)" stroke-width="2" />
+            <path d="M 16 2 L 22 5 L 16 8 Z" fill="var(--text-muted)" />
+          </svg>
+          <span>Dispatch (width = usage)</span>
+        </span>
+        <span class="dag-legend-item">
+          <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden="true">
+            <line x1="1" y1="5" x2="18" y2="5" stroke="var(--text-muted)" stroke-width="1.4" stroke-dasharray="4 3" />
+            <path d="M 16 2 L 22 5 L 16 8 Z" fill="var(--text-muted)" />
+          </svg>
+          <span>Feedback turns</span>
+        </span>
+        <span class="dag-legend-item">
+          <svg width="24" height="14" viewBox="0 0 24 14" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="21" height="11" rx="5.5" fill="none" stroke="var(--border-divider)" stroke-width="1.2" stroke-dasharray="3 2" />
+            <circle cx="7" cy="7" r="2.5" fill="var(--cli-blue)" />
+          </svg>
+          <span>Hub (Planner / Orchestrator)</span>
+        </span>
       </div>
     </div>
     ${soloNote}
   `;
 
   const stage = container.querySelector(".dag-canvas-stage") as HTMLElement | null;
+  const svgEl = stage?.querySelector("svg") ?? null;
   const tooltip = container.querySelector(".dag-tooltip") as HTMLElement | null;
   if (!stage || !tooltip) return;
 
@@ -420,7 +667,7 @@ export function renderOrchestrationDag(
     tooltip.classList.remove("visible");
   };
 
-  const showTooltip = (pos: { node: DagNode; x: number; y: number }) => {
+  const showTooltip = (pos: AbsNodePos) => {
     tooltip.innerHTML = buildTooltipHtml(pos.node, numberFormat);
     tooltip.classList.add("visible");
 
@@ -428,10 +675,14 @@ export function renderOrchestrationDag(
     const stageH = Math.max(svgHeight, stage.clientHeight);
     const tipW = tooltip.offsetWidth || 250;
     const tipH = tooltip.offsetHeight || 190;
+    const svgOffsetX = svgEl
+      ? Math.max(0, svgEl.getBoundingClientRect().left - stage.getBoundingClientRect().left)
+      : 0;
+    const absLeft = svgOffsetX + pos.x;
 
-    let left = pos.x + NODE_W + 12;
+    let left = absLeft + PILL_W + 12;
     if (left + tipW + 8 > stageW) {
-      left = pos.x - tipW - 12;
+      left = absLeft - tipW - 12;
     }
     left = Math.max(8, Math.min(stageW - tipW - 8, left));
 
@@ -467,6 +718,12 @@ export function renderOrchestrationDag(
         nodeEl.focus({ preventScroll: true });
       }
       showTooltip(pos);
+    });
+    nodeEl.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        showTooltip(pos);
+      }
     });
     nodeEl.addEventListener("mouseleave", hideTooltip);
     nodeEl.addEventListener("blur", hideTooltip);
