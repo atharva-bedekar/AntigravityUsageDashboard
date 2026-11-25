@@ -1,23 +1,47 @@
-# Antigravity Mission Telemetry Dashboard
+# Antigravity Usage Dashboard
 
-A local, high-craft, read-only mission telemetry web dashboard over token usage recorded by the Antigravity CLI.
-Built with **FastAPI**, **Jinja2**, **HTMX**, and **Apache ECharts** (replacing the legacy Streamlit + Plotly interface).
+Antigravity Usage Dashboard reads local Antigravity session logs and estimates API-equivalent costs from model pricing. This branch contains a Windows desktop app alongside the Python web dashboard on `main`.
+
+## Windows desktop app
+
+The desktop app uses Rust and Tauri 2 in `src-tauri/` and a TypeScript/Vite frontend in `ui/`. It scans Antigravity App and CLI sessions, groups sessions by project, and provides cost estimates, forecasts, and CSV export. The scanners read source logs locally. In Settings, you can change the default sources, `~/.gemini/antigravity/brain` and `~/.gemini/antigravity-cli/brain`, and adjust pricing and currency.
+
+Install Node.js, Rust with the Windows MSVC toolchain, Visual Studio C++ Build Tools, and WebView2. From the repository root in PowerShell, run the following commands.
+
+```powershell
+cargo install tauri-cli --version '^2' --locked
+npm ci --prefix ui
+Push-Location src-tauri
+cargo tauri dev
+Pop-Location
+```
+
+Run `cargo tauri build` from `src-tauri/` to build a Windows installer. To check the frontend and Rust code, run the following commands from the repository root. The first command supplies the frontend assets required by the Rust build.
+
+```powershell
+npm --prefix ui run build
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+## Python web dashboard
+
+The web dashboard reads token usage recorded by the Antigravity CLI.
+It uses **FastAPI**, **Jinja2**, **HTMX**, and **Apache ECharts**.
 It reuses the existing extractor (`agy_usage.py`) instead of reimplementing it, and computes every cost itself from a **dated, versioned price catalog**.
 
 Nothing is uploaded. The app binds to `127.0.0.1:8501` only, uses vendored offline-safe frontend assets (no CDNs or external requests), and transmits zero telemetry.
 
 ---
 
-## 1. Quick start (Windows PowerShell)
+### Quick start (Windows PowerShell)
 
 ```powershell
-cd $env:USERPROFILE\PycharmProjects\AntigravityUsageDashboard
-
+# Run from the repository root.
 # One-time setup (using uv or py launcher)
-uv venv
+uv venv --python 3.11
 uv pip install -r requirements.txt
 # Alternatively with python/pip:
-# py -m venv .venv
+# py -3.11 -m venv .venv
 # .venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # Run via production launcher script (starts uvicorn on http://127.0.0.1:8501)
@@ -37,7 +61,7 @@ Run tests:
 
 ---
 
-## 2. What it reads
+### What it reads
 
 | | |
 |---|---|
@@ -54,7 +78,7 @@ are skipped. A full scan takes ~1.5 s and is cached in-memory with a 30 s TTL.
 
 ---
 
-## 3. Architecture & Data Flow
+### Architecture & Data Flow
 
 The dashboard is structured as a stateless FastAPI service paired with lightweight HTMX swaps and vanilla JS-managed Apache ECharts instances:
 
@@ -94,24 +118,24 @@ Cost is **never read from the logs** — it does not exist there. It is always
 
 ---
 
-## 4. Workspaces & Slide-over Drawers
+### Workspaces & Slide-over Drawers
 
 The web UI provides a dense, low-latency Mission Telemetry operations experience structured into **3 workspaces** and **3 slide-over drawers**, controlled by a sticky Command Bar:
 
-### Sticky Command Bar & Live HUD
+#### Sticky Command Bar & Live HUD
 - **Global Filters**: Date range presets (`All`, `Today`, `7d`, `14d`, `30d`), custom date inputs, baseline model selector.
 - **Financial Controls**: Currency selector (`INR`, `USD`, `EUR`, `GBP`), configurable FX rate, and actual subscription spend input.
 - **Live Telemetry HUD**: Real-time badges for total tokens, API-equivalent cost, background extractor job status dot, and manual cache refresh trigger (`POST /api/refresh`).
 - **Workspace Navigation**: Instant HTMX tab switching (`hx-swap="outerHTML"` on `#workspace-canvas`) preserving filter parameters.
 
-### `01 // COMMAND` Workspace
+#### `01 // COMMAND` Workspace
 - **Telemetry Grid**: High-craft KPI cards displaying Total Tokens, Fresh vs Cached Token distribution, Thinking/Output volume, Blended API Rate, Cost per Call, and Autonomy Ratio.
 - **Dual-Axis Daily Burn**: Daily token usage and equivalent API cost time series with interactive Apache ECharts `dataZoom` slider.
 - **Fresh vs Cached Ratio**: Donut visualization showing prompt caching efficiency.
 - **Workspace Attribution**: Spending and token volume breakdown categorized by workspace project directory.
 - **Cost Drivers & Waste Proxy**: Top cost-contributing operations with an order-of-magnitude engineering waste proxy disclaimer.
 
-### `02 // SESSIONS` Workspace (3 Zones)
+#### `02 // SESSIONS` Workspace (3 Zones)
 - **Zone 1 (Header & Swarm Intelligence)**: Session search filter, kind pills (`All`, `Interactive`, `Subagent`), Subagent Swarm KPIs (total subagents, swarm share, inter-agent messages), and Context Pressure metrics.
 - **Zone 2 (Deep Telemetry Visualizations)**:
   - *Thinking Ratio Trend*: Daily proportion of reasoning/thinking tokens.
@@ -121,7 +145,7 @@ The web UI provides a dense, low-latency Mission Telemetry operations experience
   - *Failure Feed & Daily Failures*: Failure frequency and error string analysis.
 - **Zone 3 (Session Directory)**: Searchable session table with conversation ID, date, token breakdown, and direct click-to-open integration with the Session Inspector drawer.
 
-### `03 // ECONOMICS` Workspace (Stages 1 & 2)
+#### `03 // ECONOMICS` Workspace (Stages 1 & 2)
 - **Stage 1: Forecasting Engine**:
   - Four projection models: Linear Baseline, Bootstrap Resampling, Monte Carlo Simulation, and Holt's Trend Model (gated to ≥14 days of data).
   - Configurable forecast horizon, growth drift, and volatility parameters.
@@ -132,14 +156,14 @@ The web UI provides a dense, low-latency Mission Telemetry operations experience
   - Interactive sliders adjusting Cached Token Ratio, Prompt Volume, and Output Volume.
   - Cost per 1M tokens, tokens per currency unit, and multiple-of-cheapest benchmarks.
 
-### Slide-over Drawers
+#### Slide-over Drawers
 - **Operations & Sync Drawer (`#drawer-sync`)**: Subprocess job runner to trigger `agy_usage.py` extractions with live polling during execution, stdout/stderr logs, data consistency checks via `metrics.verify_consistency()`, and SQLite snapshot run history.
 - **Session Inspector Drawer (`#drawer-session`)**: Deep-dive transcript inspector showing detailed tool invocations, slowest commands with exit codes, error diagnostics, and generated markdown artifacts.
 - **Price Catalog Drawer (`#drawer-catalog`)**: Interactive table of dated and versioned model pricing entries with effective date ranges and input/cached/output token rates.
 
 ---
 
-## 5. Configuration
+### Configuration
 
 `config/config.json` (copy of `config.example.json`):
 
@@ -162,7 +186,7 @@ The web UI provides a dense, low-latency Mission Telemetry operations experience
 The command bar lets you adjust subscription amount, FX rate, currency, and pricing model for
 the session without modifying the config file.
 
-### Prices
+#### Prices
 
 `config/pricing.json` has one entry per model per date range (`effective_from` /
 `effective_until`, USD per 1M tokens for input / cached input / output). To be exact for a
@@ -172,7 +196,7 @@ flags anything else as an **estimate** rather than silently using today's rate.
 
 ---
 
-## 6. Calculations (all in `agy_dash/metrics.py`, all tested)
+### Calculations (all in `agy_dash/metrics.py`, all tested)
 
 * `total = fresh input + cached input + output` — the three categories are mutually
   exclusive in the source (fresh excludes cache reads).
@@ -187,7 +211,7 @@ flags anything else as an **estimate** rather than silently using today's rate.
 
 ---
 
-## 7. Limitations you should know
+### Limitations
 
 1. **Model attribution is not in the logs.** Transcripts record no per-call model, so all
    usage is priced with the single model you select. Re-pricing could shift totals.
@@ -222,7 +246,7 @@ flags anything else as an **estimate** rather than silently using today's rate.
 
 ---
 
-## 8. Tests
+### Tests
 
 Test suite covers both core analytics and the FastAPI + HTMX interface:
 
@@ -249,7 +273,7 @@ Run full suite:
 
 ---
 
-## 9. File map
+### Python web dashboard files
 
 ```text
 agy_usage.py                  the extractor script: scans Antigravity logs into daily/session aggregates

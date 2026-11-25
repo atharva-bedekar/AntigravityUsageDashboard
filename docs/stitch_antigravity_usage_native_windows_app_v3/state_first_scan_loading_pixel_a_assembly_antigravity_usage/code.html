@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — First Scan</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Public Sans & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 0.95; }
+      50% { opacity: 0.5; }
+    }
+    .animate-pulse-subtle {
+      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes float-pixel-1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-6px, -12px) rotate(-8deg); }
+    }
+    @keyframes float-pixel-2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(8px, -14px) rotate(12deg); }
+    }
+    @keyframes float-pixel-3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(12px, 8px) rotate(-6deg); }
+    }
+    .floating-pixel-1 { animation: float-pixel-1 3.2s ease-in-out infinite; }
+    .floating-pixel-2 { animation: float-pixel-2 2.8s ease-in-out infinite 0.4s; }
+    .floating-pixel-3 { animation: float-pixel-3 3.6s ease-in-out infinite 0.8s; }
+
+    @keyframes shimmer-move {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-effect {
+      background: linear-gradient(90deg, #F5F5F5 25%, #EBEBEB 50%, #F5F5F5 75%);
+      background-size: 200% 100%;
+      animation: shimmer-move 2.2s infinite;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+  </style>
+</head>
+<body class="bg-neutral-50 text-neutral-900 font-body antialiased select-none overflow-hidden h-screen w-screen flex flex-col justify-between">
+<!-- ========================================================================= -->
+<!-- WINDOW CHROME & TOP BAR (Shared Component: TopNavBar Anchor)               -->
+<!-- ========================================================================= -->
+<header class="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 font-headline text-xs font-normal tracking-tight docked full-width top-0 h-8 flex justify-between items-center w-full px-3 select-none shrink-0 z-50">
+<!-- Left: App Identity Glyph & File Menus -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-neutral-950 text-white flex items-center justify-center font-bold text-[10px] leading-none">
+          A
+        </div>
+<span class="text-xs font-medium text-neutral-900 dark:text-neutral-100 tracking-wide">Antigravity Usage</span>
+</div>
+<!-- Standard native menus -->
+<nav class="hidden sm:flex items-center space-x-1 pl-2 text-neutral-500 font-body">
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-950 transition-colors duration-150">Usage</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-950 transition-colors duration-150">View</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-950 transition-colors duration-150">Window</button>
+<button class="px-2 py-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-950 transition-colors duration-150">Help</button>
+</nav>
+</div>
+<!-- Center: Runtime indicator string -->
+<div class="hidden md:flex items-center gap-2 px-3 py-0.5 bg-neutral-200/50 dark:bg-neutral-800/60 rounded-full border border-neutral-300/40">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+<span class="font-mono text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">antigravity-runtime://session/scan-in-progress</span>
+</div>
+<!-- Right: Window control actions (Shared Component Trailing Actions) -->
+<div class="flex items-center -mr-3 h-8">
+<button class="w-11 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 transition-colors duration-150" title="Minimize">
+<span class="material-symbols-outlined text-[16px]" data-icon="minimize">minimize</span>
+</button>
+<button class="w-11 h-8 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 transition-colors duration-150" title="Maximize">
+<span class="material-symbols-outlined text-[14px]" data-icon="crop_square">crop_square</span>
+</button>
+<button class="w-11 h-8 flex items-center justify-center text-neutral-600 hover:bg-red-500 hover:text-white transition-colors duration-150" title="Close">
+<span class="material-symbols-outlined text-[16px]" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE: SIDEBAR + CONTENT CANVAS                                   -->
+<!-- ========================================================================= -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- ======================================================================= -->
+<!-- SIDEBAR (Shared Component: SideNavBar Anchor)                           -->
+<!-- ======================================================================= -->
+<aside class="flex flex-col justify-between h-full p-3 w-64 select-none shrink-0 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800">
+<div class="flex flex-col gap-4">
+<!-- App Header with controls -->
+<div class="flex items-center justify-between pb-1 px-1">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-neutral-950 text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">
+              A
+            </div>
+<div class="flex flex-col">
+<span class="font-headline text-base font-semibold text-neutral-950 dark:text-white tracking-tight leading-tight">Antigravity</span>
+<span class="font-mono text-[10px] text-neutral-500">Usage v3</span>
+</div>
+</div>
+<div class="flex items-center gap-1 text-neutral-400">
+<button class="p-1 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors" title="Previous View">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="p-1 hover:text-neutral-900 hover:bg-neutral-200 rounded transition-colors" title="Next View">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Rescan Sessions Live Button (Active Spinner) -->
+<button class="w-full flex items-center justify-between px-3 py-2 bg-neutral-950 text-white rounded-lg text-xs font-medium shadow-sm hover:bg-neutral-800 transition-all duration-150 active:scale-[0.99] group">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] animate-spin text-amber-400" data-icon="sync">sync</span>
+<span>Rescan Sessions</span>
+</div>
+<span class="font-mono text-[11px] text-neutral-400 bg-neutral-800/80 px-1.5 py-0.5 rounded border border-neutral-700">[00:03s]</span>
+</button>
+<!-- MAIN VIEWS Section -->
+<div class="space-y-1">
+<div class="px-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Main Views</div>
+<!-- Tab 1: Dashboard (ACTIVE MATCH) -->
+<a class="flex items-center gap-3 bg-white dark:bg-neutral-800 text-neutral-950 dark:text-white font-medium rounded-lg px-3 py-2 border border-neutral-200/80 dark:border-neutral-700/80 shadow-sm transition-all duration-150 active:scale-[0.99]" href="#">
+<span class="material-symbols-outlined text-[18px] text-neutral-900 dark:text-white" data-icon="dashboard">dashboard</span>
+<span class="flex-1 text-xs">Dashboard</span>
+<span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+</a>
+<!-- Tab 2: Daily Usage (INACTIVE) -->
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 active:scale-[0.99] text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="bar_chart">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<!-- Tab 3: Sessions & Runs (INACTIVE) -->
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 active:scale-[0.99] text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="history">history</span>
+<span>Sessions &amp; Runs</span>
+</a>
+<!-- Tab 4: Projects (INACTIVE) -->
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 active:scale-[0.99] text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="folder_open">folder_open</span>
+<span>Projects</span>
+</a>
+<!-- Tab 5: Models Breakdown (INACTIVE) -->
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 active:scale-[0.99] text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="pie_chart">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+</div>
+<!-- SOURCES SECTION -->
+<div class="space-y-1.5 pt-2">
+<div class="px-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Sources</div>
+<!-- Source 1: APP -->
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-neutral-100/70 border border-neutral-200/50 text-xs">
+<div class="flex items-center gap-2">
+<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-neutral-800 text-white tracking-wider">APP</span>
+<span class="text-neutral-700 font-medium">Antigravity App</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+<span class="text-[10px] text-neutral-500 font-mono">Syncing</span>
+</div>
+</div>
+<!-- Source 2: CLI -->
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-neutral-100/70 border border-neutral-200/50 text-xs">
+<div class="flex items-center gap-2">
+<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-purple-700 text-white tracking-wider">CLI</span>
+<span class="text-neutral-700 font-medium">Antigravity CLI</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse"></span>
+<span class="text-[10px] text-purple-700 font-mono font-medium">142 files</span>
+</div>
+</div>
+</div>
+<!-- RECENT SESSIONS SKELETON SECTION -->
+<div class="space-y-2 pt-2">
+<div class="px-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider flex items-center justify-between">
+<span>Recent Sessions</span>
+<span class="material-symbols-outlined text-[13px] animate-spin text-neutral-400">progress_activity</span>
+</div>
+<div class="space-y-1.5 px-2">
+<div class="h-3 w-4/5 rounded shimmer-effect"></div>
+<div class="h-3 w-3/5 rounded shimmer-effect"></div>
+<div class="h-3 w-5/6 rounded shimmer-effect"></div>
+</div>
+</div>
+</div>
+<!-- Docked Sidebar Footer -->
+<div class="pt-3 border-t border-neutral-200/80 dark:border-neutral-800 space-y-1">
+<button class="w-full flex items-center gap-3 px-3 py-2 text-xs text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="terminal">terminal</span>
+<span class="font-medium">CLI Sync Terminal</span>
+</button>
+<button class="w-full flex items-center justify-between px-3 py-2 text-xs text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-lg transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px]" data-icon="settings">settings</span>
+<span class="font-medium">Settings</span>
+</div>
+<span class="text-[10px] font-mono text-neutral-400 bg-neutral-200/80 px-1 py-0.2 rounded">v3.0.4</span>
+</button>
+</div>
+</aside>
+<!-- ======================================================================= -->
+<!-- MAIN CONTENT PANEL (#FFFFFF, 16px radius, 1px border #E0E0E0)           -->
+<!-- ======================================================================= -->
+<main class="flex-1 bg-white m-2.5 rounded-2xl border border-neutral-300/80 shadow-sm relative overflow-hidden flex flex-col">
+<!-- Panel Header / Breadcrumb Bar -->
+<div class="h-13 px-6 border-b border-neutral-200 flex items-center justify-between shrink-0 bg-white">
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 text-sm text-neutral-500">
+<span>Antigravity</span>
+<span class="text-neutral-300">/</span>
+<span class="font-medium text-neutral-900">Overview</span>
+</div>
+<!-- Live Scanning status pill badge -->
+<div class="flex items-center gap-2 px-2.5 py-1 bg-amber-50 border border-amber-200/70 rounded-full text-xs">
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+<span class="font-mono text-amber-900 text-[11px] font-medium">[ Syncing transcript logs: 142 / 236 ]</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-neutral-500">
+<button class="p-1.5 rounded-lg hover:bg-neutral-100 hover:text-neutral-900 transition-colors" title="Information Guide">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</button>
+<button class="p-1.5 rounded-lg hover:bg-neutral-100 hover:text-neutral-900 transition-colors" title="Filter &amp; View Config">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+</div>
+<!-- PANEL CONTENT CANVAS: SKELETON DASHBOARD LAYER -->
+<div class="flex-1 p-6 overflow-y-auto space-y-6 opacity-40 filter blur-[0.5px] pointer-events-none select-none">
+<!-- Filter Bar Skeleton -->
+<div class="flex items-center gap-2">
+<div class="h-8 w-28 rounded-full shimmer-effect border border-neutral-200"></div>
+<div class="h-8 w-24 rounded-full shimmer-effect border border-neutral-200"></div>
+<div class="h-8 w-32 rounded-full shimmer-effect border border-neutral-200"></div>
+<div class="h-8 w-44 rounded-full shimmer-effect border border-neutral-200"></div>
+<div class="h-8 w-20 rounded-full shimmer-effect border border-neutral-200"></div>
+</div>
+<!-- Summary Banner Skeleton -->
+<div class="space-y-2 py-1">
+<div class="h-6 w-3/4 rounded-md shimmer-effect"></div>
+<div class="h-4 w-1/2 rounded-md shimmer-effect"></div>
+</div>
+<!-- 4 KPI Cards Grid Skeleton -->
+<div class="grid grid-cols-4 gap-4">
+<!-- Card 1: New input -->
+<div class="p-4 rounded-xl border border-neutral-200 bg-white space-y-3">
+<div class="flex items-center justify-between">
+<div class="h-3.5 w-20 rounded shimmer-effect"></div>
+<div class="w-3 h-3 rounded-full bg-blue-100"></div>
+</div>
+<div class="h-7 w-28 rounded shimmer-effect"></div>
+<div class="h-2 w-full rounded shimmer-effect"></div>
+</div>
+<!-- Card 2: Cached input -->
+<div class="p-4 rounded-xl border border-neutral-200 bg-white space-y-3">
+<div class="flex items-center justify-between">
+<div class="h-3.5 w-24 rounded shimmer-effect"></div>
+<div class="w-3 h-3 rounded-full bg-blue-50"></div>
+</div>
+<div class="h-7 w-32 rounded shimmer-effect"></div>
+<div class="h-2 w-full rounded shimmer-effect"></div>
+</div>
+<!-- Card 3: Output -->
+<div class="p-4 rounded-xl border border-neutral-200 bg-white space-y-3">
+<div class="flex items-center justify-between">
+<div class="h-3.5 w-16 rounded shimmer-effect"></div>
+<div class="w-3 h-3 rounded-full bg-orange-100"></div>
+</div>
+<div class="h-7 w-24 rounded shimmer-effect"></div>
+<div class="h-2 w-full rounded shimmer-effect"></div>
+</div>
+<!-- Card 4: Estimated cost -->
+<div class="p-4 rounded-xl border border-neutral-200 bg-white space-y-3">
+<div class="flex items-center justify-between">
+<div class="h-3.5 w-24 rounded shimmer-effect"></div>
+<div class="w-3 h-3 rounded-full bg-neutral-100"></div>
+</div>
+<div class="h-7 w-28 rounded shimmer-effect"></div>
+<div class="h-2 w-full rounded shimmer-effect"></div>
+</div>
+</div>
+<!-- Chart Skeleton Section -->
+<div class="p-5 rounded-xl border border-neutral-200 bg-white space-y-4">
+<div class="flex items-center justify-between">
+<div class="h-4 w-40 rounded shimmer-effect"></div>
+<div class="h-4 w-28 rounded shimmer-effect"></div>
+</div>
+<div class="h-48 w-full rounded-lg shimmer-effect flex items-end justify-between p-4 gap-2">
+<div class="w-8 h-20 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-32 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-24 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-40 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-16 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-28 bg-neutral-200 rounded-t"></div>
+<div class="w-8 h-36 bg-neutral-200 rounded-t"></div>
+</div>
+</div>
+</div>
+<!-- ===================================================================== -->
+<!-- CENTER HERO OVERLAY: FIRST SCAN & PIXEL-A ASSEMBLY                    -->
+<!-- ===================================================================== -->
+<div class="absolute inset-0 z-30 flex items-center justify-center p-6 bg-white/40 backdrop-blur-[3px]">
+<div class="bg-white/95 backdrop-blur-md border border-neutral-200/90 rounded-2xl p-8 max-w-lg w-full shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+<!-- Subtle top decorative ambient accent line -->
+<div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-orange-400 via-yellow-400 via-green-400 via-blue-500 to-purple-500"></div>
+<!-- THE 7-COLOUR PIXEL-GRADIENT "A" MID-ASSEMBLY -->
+<div class="relative w-44 h-48 my-2 flex items-center justify-center">
+<!-- Assembly Pixel Grid Matrix -->
+<!-- Palette: Orange #F2922E, Red #EF5442, Yellow #DBB131, Green #7CC251, Teal #62BAD5, Blue #3D89FB, Purple #8F64B4 -->
+<div class="relative grid grid-cols-7 gap-1 p-2 bg-neutral-50/70 rounded-xl border border-neutral-200/60 shadow-inner">
+<!-- Row 1: Apex of 'A' -->
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#EF5442] shadow-sm transform transition-all duration-300" title="Pixel Red #EF5442"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<!-- Row 2: Slopes -->
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#F2922E] shadow-sm" title="Pixel Orange #F2922E"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#DBB131] shadow-sm" title="Pixel Yellow #DBB131"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<!-- Row 3: Mid Upper -->
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#EF5442] shadow-sm"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#7CC251] shadow-sm" title="Pixel Green #7CC251"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<!-- Row 4: Crossbar of 'A' -->
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#F2922E] shadow-sm"></div>
+<div class="w-5 h-5 rounded-sm bg-[#62BAD5] shadow-sm" title="Pixel Teal #62BAD5"></div>
+<div class="w-5 h-5 rounded-sm bg-[#3D89FB] shadow-sm" title="Pixel Blue #3D89FB"></div>
+<div class="w-5 h-5 rounded-sm bg-[#8F64B4] shadow-sm" title="Pixel Purple #8F64B4"></div>
+<div class="w-5 h-5 rounded-sm bg-[#62BAD5] shadow-sm"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<!-- Row 5: Lower Legs -->
+<div class="w-5 h-5 rounded-sm bg-[#DBB131] shadow-sm"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#3D89FB] shadow-sm"></div>
+<!-- Row 6: Base Feet -->
+<div class="w-5 h-5 rounded-sm bg-[#8F64B4] shadow-sm"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm opacity-0"></div>
+<div class="w-5 h-5 rounded-sm bg-[#8F64B4] shadow-sm"></div>
+</div>
+<!-- Floating / Snapping In Incoming Pixel Squares (Mid-assembly dynamic effect) -->
+<!-- Incoming Pixel 1: Yellow floating from top-left -->
+<div class="absolute -top-3 left-3 floating-pixel-1 flex flex-col items-center">
+<div class="w-5 h-5 rounded-sm bg-[#DBB131] shadow-md border border-white/60"></div>
+<span class="w-0.5 h-3 border-l border-dashed border-neutral-300"></span>
+</div>
+<!-- Incoming Pixel 2: Blue floating from top-right -->
+<div class="absolute -top-2 right-4 floating-pixel-2 flex flex-col items-center">
+<div class="w-5 h-5 rounded-sm bg-[#3D89FB] shadow-md border border-white/60"></div>
+<span class="w-0.5 h-4 border-l border-dashed border-neutral-300"></span>
+</div>
+<!-- Incoming Pixel 3: Red snapping into bottom slope -->
+<div class="absolute -bottom-2 right-1 floating-pixel-3 flex items-center">
+<span class="w-3 h-0.5 border-t border-dashed border-neutral-300"></span>
+<div class="w-5 h-5 rounded-sm bg-[#EF5442] shadow-md border border-white/60"></div>
+</div>
+</div>
+<!-- Hero Heading -->
+<h2 class="font-headline text-neutral-900 text-lg font-semibold mt-4 tracking-tight">
+            Reading 236 log files…
+          </h2>
+<!-- High-precision Progress Bar -->
+<div class="w-full mt-4 bg-neutral-100 rounded-full h-2 overflow-hidden border border-neutral-200">
+<div class="bg-neutral-950 h-full rounded-full transition-all duration-500 ease-out" style="width: 60.16%;"></div>
+</div>
+<!-- Live Indexing Subtext Metrics -->
+<p class="font-mono text-xs text-neutral-500 mt-2.5 leading-relaxed">
+            Discovered <span class="text-neutral-900 font-medium">6 App sessions</span> · <span class="text-neutral-900 font-medium">136 CLI runs</span> · <span class="text-neutral-900 font-medium">84.2M tokens</span> indexed so far...
+          </p>
+<!-- Interactive Action Chips & Controls -->
+<div class="mt-6 flex items-center gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-700 text-xs font-mono border border-neutral-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+<span>Running in background</span>
+</div>
+<button class="px-3 py-1.5 rounded-full bg-white hover:bg-neutral-100 text-neutral-800 text-xs font-medium border border-neutral-300 transition-colors shadow-2xs">
+              Pause Scan
+            </button>
+<button class="px-3 py-1.5 rounded-full bg-white hover:bg-neutral-100 text-neutral-800 text-xs font-medium border border-neutral-300 transition-colors shadow-2xs">
+              View Log Stream
+            </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- ========================================================================= -->
+<!-- WINDOW FOOTER / STATUS BAR                                                -->
+<!-- ========================================================================= -->
+<footer class="font-mono text-[11px] text-neutral-600 bg-neutral-50 border-t border-neutral-200 px-4 py-1.5 flex items-center justify-between shrink-0 select-none z-40">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+<span class="text-neutral-700 font-medium">[ scanning ~/.gemini/antigravity-cli/brain · 142 / 236 files ]</span>
+</div>
+<div class="flex items-center gap-3 text-neutral-500">
+<span>UTC+5:30</span>
+<span>·</span>
+<span>Light Theme</span>
+<span>·</span>
+<span>Antigravity 2.0 Engine</span>
+<span>·</span>
+<span class="bg-neutral-200/80 px-1 py-0.5 rounded text-[10px]">PID: 49120</span>
+</div>
+</footer>
+</body></html>

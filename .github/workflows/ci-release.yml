@@ -1,0 +1,177 @@
+name: CI & Windows Release
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Typecheck, Build UI & Cargo Test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install UI dependencies & typecheck
+        working-directory: ui
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+
+      - name: Run Rust unit & integration tests
+        working-directory: src-tauri
+        run: cargo test --locked
+
+  release:
+    name: Build Windows App & Publish GitHub Release
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository (full history for changelog & tagging)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build UI bundle
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Tauri v2 Windows binary & installers
+        working-directory: src-tauri
+        run: npx --yes @tauri-apps/cli@^2 build
+
+      - name: Prepare version tag, metadata, changelog & checksums
+        id: meta
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $conf = Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $version = $conf.version
+          $baseTag = "v$version"
+
+          git fetch --tags --force
+          $existing = git tag -l $baseTag
+          if ([string]::IsNullOrWhiteSpace($existing)) {
+            $tag = $baseTag
+          } else {
+            $tag = "$baseTag-r$env:GITHUB_RUN_NUMBER"
+          }
+
+          $prevTag = (git tag --list "v*" --sort=-v:refname | Select-Object -First 1)
+          if ([string]::IsNullOrWhiteSpace($prevTag)) {
+            $commits = git log -n 30 --pretty=format:"- %s (%h) by %an"
+            $rangeDesc = "Initial release history (last 30 commits)"
+          } else {
+            $commits = git log "$prevTag..HEAD" --pretty=format:"- %s (%h) by %an"
+            if ([string]::IsNullOrWhiteSpace($commits)) {
+              $commits = "- No new commits since $prevTag"
+            }
+            $rangeDesc = "Changes since ``$prevTag``"
+          }
+
+          $distDir = "release-artifacts"
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+
+          $exe = "src-tauri/target/release/antigravity-usage.exe"
+          if (Test-Path $exe) {
+            Copy-Item $exe "$distDir/antigravity-usage-$tag-x86_64-windows.exe"
+          }
+          Get-ChildItem "src-tauri/target/release/bundle/msi/*.msi" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName $distDir
+          }
+          Get-ChildItem "src-tauri/target/release/bundle/nsis/*-setup.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName $distDir
+          }
+
+          $hashes = Get-ChildItem $distDir -File | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$h  $($_.Name)"
+          }
+          $hashes | Out-File -FilePath "$distDir/SHA256SUMS.txt" -Encoding utf8
+
+          $buildTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss 'UTC'")
+          $shortSha = $env:GITHUB_SHA.Substring(0, 7)
+
+          @"
+          ## Antigravity Usage $tag
+
+          Native Windows 11 desktop application for Antigravity 2.0 App and Antigravity CLI token usage.
+
+          ### Release Metadata
+          - **Version:** ``$version``
+          - **Tag:** ``$tag``
+          - **Commit:** ``$shortSha``
+          - **Target:** ``x86_64-pc-windows-msvc``
+          - **Built:** $buildTime
+
+          ### Changelog ($rangeDesc)
+          $($commits -join "`n")
+
+          ### SHA-256 Checksums
+          ``````text
+          $($hashes -join "`n")
+          ``````
+          "@ | Out-File -FilePath "release-notes.md" -Encoding utf8
+
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Create & push git tag
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.meta.outputs.tag }}" -m "Release ${{ steps.meta.outputs.tag }}"
+          git push origin "${{ steps.meta.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Antigravity Usage ${{ steps.meta.outputs.tag }}
+          body_path: release-notes.md
+          generate_release_notes: true
+          files: release-artifacts/*

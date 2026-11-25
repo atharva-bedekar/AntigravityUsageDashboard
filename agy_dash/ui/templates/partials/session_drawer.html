@@ -1,9 +1,9 @@
-<div id="session-drawer" class="drawer">
+<dialog id="session-drawer" class="drawer" aria-labelledby="session-drawer-title">
   <div class="drawer-header">
-    <div style="font-family:var(--font-display); font-weight:700;">SESSION INSPECTOR</div>
-    <button type="button" class="btn" onclick="closeDrawers()">✕</button>
+    <h2 id="session-drawer-title">Session details</h2>
+    <button type="button" class="btn btn-quiet" onclick="closeDrawers()" autofocus>Close</button>
   </div>
   <div id="session-drawer-content" class="drawer-body">
-    <div style="color:var(--text-muted); font-size:0.8rem;">Select a session from the table to inspect details.</div>
+    <div class="panel-meta">Select a session to see its details</div>
   </div>
-</div>
+</dialog>

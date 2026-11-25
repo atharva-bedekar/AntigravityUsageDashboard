@@ -12,45 +12,37 @@ from .. import metrics, pricing, source
 from ..config import Config
 
 DARK = {
-    "bg": "#090A0F",
-    "panel": "#10121A",
-    "panel_solid": "#10121A",
-    "panel_alt": "#161922",
-    "border": "#1E2230",
-    "border_highlight": "rgba(56, 189, 248, 0.4)",
-    "text": "#F1F5F9",
-    "text_bright": "#FFFFFF",
-    "muted": "#94A3B8",
-    "dim": "#64748B",
-    "accent": "#38BDF8",     # Cyan
-    "fresh": "#38BDF8",      # Fresh input tokens
-    "cached": "#10B981",     # Cached tokens (Emerald)
-    "output": "#F59E0B",     # Output & thinking tokens (Amber)
-    "cost": "#A78BFA",       # Cost burn (Violet)
-    "warn": "#FBBF24",       # Warning notice
-    "bad": "#F43F5E",        # Error / friction (Rose)
-    "grid": "rgba(255, 255, 255, 0.05)",
+    "bg": "#141617",
+    "panel_solid": "#1b1e20",
+    "panel_alt": "#23272a",
+    "border": "#33383b",
+    "text": "#c7cdd1",
+    "muted": "#a0aab0",
+    "accent": "#78ddea",
+    "fresh": "#8b99a6",
+    "cached": "#527b85",
+    "output": "#d3dbe1",
+    "warn": "#e0b879",
+    "bad": "#eea3a1",
+    "cost": "#78ddea",
+    "grid": "#33383b",
 }
 
 LIGHT = {
-    "bg": "#F6F7F9",
-    "panel": "#FFFFFF",
-    "panel_solid": "#FFFFFF",
-    "panel_alt": "#F1F4F8",
-    "border": "#E2E8F0",
-    "border_highlight": "rgba(2, 132, 199, 0.4)",
-    "text": "#0F172A",
-    "text_bright": "#020617",
-    "muted": "#64748B",
-    "dim": "#94A3B8",
-    "accent": "#0284C7",
-    "fresh": "#0284C7",
-    "cached": "#059669",
-    "output": "#D97706",
-    "cost": "#7C3AED",
-    "warn": "#B45309",
-    "bad": "#E11D48",
-    "grid": "rgba(0, 0, 0, 0.05)",
+    "bg": "#f4f5f4",
+    "panel_solid": "#ffffff",
+    "panel_alt": "#edf0ef",
+    "border": "#d8dedd",
+    "text": "#414c50",
+    "muted": "#555f63",
+    "accent": "#006b7b",
+    "fresh": "#697885",
+    "cached": "#46747d",
+    "output": "#a3afb6",
+    "warn": "#845609",
+    "bad": "#a63639",
+    "cost": "#006b7b",
+    "grid": "#d8dedd",
 }
 
 CURRENCY_SYMBOLS = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£"}

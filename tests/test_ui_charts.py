@@ -78,25 +78,9 @@ def test_daily_burn_populated():
     assert "xAxis" in res
     assert len(res["xAxis"]["data"]) == 3
     assert len(res["series"]) == 4
-    assert res["series"][0]["name"] == "Fresh Input"
-    assert res["series"][1]["name"] == "Cached Input"
-    assert res["series"][2]["name"] == "Output & Reasoning"
-    assert res["series"][3]["name"] == "API Cost (INR)"
-
-
-def test_token_mix_and_cost_burden():
-    ctx = _sample_ctx()
-    tm = charts.token_mix(ctx)
-    assert len(tm["series"]) == 1
-    assert tm["series"][0]["type"] == "pie"
-    assert len(tm["series"][0]["data"]) == 3
-
-    cb = charts.cost_burden(ctx)
-    assert len(cb["series"]) == 1
-    assert cb["series"][0]["type"] == "pie"
-    assert len(cb["series"][0]["data"]) == 3
-    # Check values are converted to INR (> 0)
-    assert any(d["value"] > 0 for d in cb["series"][0]["data"])
+    assert [series["name"] for series in res["series"]] == [
+        "Fresh input", "Cached input", "Output", "Estimated cost (INR)",
+    ]
 
 
 def test_workspace_attribution():
@@ -117,12 +101,12 @@ def test_cache_thrash():
 
     step_df = pd.DataFrame({
         "date": ["2026-10-01", "2026-10-02"],
-        "cache_miss_calls": [5, 12],
+        "cache_miss_calls": [5, float("nan")],
         "model_calls": [10, 20],
     })
     res = charts.cache_thrash(step_df, ctx)
     assert len(res["series"]) == 2
-    assert res["series"][0]["data"] == [5, 12]
+    assert res["series"][0]["data"] == [5, 0]
     assert res["series"][1]["data"] == [10, 20]
 
 

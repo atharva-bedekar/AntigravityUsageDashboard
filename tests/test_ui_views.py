@@ -55,8 +55,13 @@ def test_build_command_view_with_none_and_deep_data(usage, data):
     assert len(res_none["econ_kpis"]) == 4
     assert res_none["waste"] is None
     assert "daily_burn_chart" in res_none["charts"]
-    assert "token_mix_chart" in res_none["charts"]
-    assert "cost_burden_chart" in res_none["charts"]
+    mix = res_none["mix_rows"]
+    token_series = res_none["charts"]["daily_burn_chart"]["series"][:3]
+    assert [row["label"] for row in mix] == [series["name"] for series in token_series]
+    assert [row["color"] for row in mix] == [series["color"] for series in token_series]
+    assert sum(row["token_share"] for row in mix) == pytest.approx(100, abs=0.02)
+    assert sum(row["cost_share"] for row in mix) == pytest.approx(100, abs=0.02)
+    assert mix[0]["cost"] == ctx.money(ctx.overview.breakdown_usd["fresh_in"])
     assert "workspace_chart" in res_none["charts"]
     assert "cache_thrash_chart" in res_none["charts"]
     assert len(res_none["best_days"]) > 0

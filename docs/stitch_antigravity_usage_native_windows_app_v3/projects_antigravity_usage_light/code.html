@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Antigravity Usage — Projects</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            app: {
+              chrome: '#FAFAFA',
+              border: '#E5E5E5',
+              surface: '#FFFFFF',
+              subtle: '#F5F5F5',
+              selected: '#F0F0F0',
+              text: '#0A0A0C',
+              zinc: '#3F3F46',
+              muted: '#71717A',
+              secondary: '#828283',
+              time: '#6C6C6D',
+              faint: '#BBBBBF',
+              link: '#1A73E8'
+            },
+            data: {
+              new: '#1967D2',
+              cached: '#AECBFA',
+              output: '#E37400',
+              cli: '#9334E6',
+              appzinc: '#3F3F46',
+              ok: '#188038',
+              okbg: '#E6F4EA'
+            }
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            display: ["Public Sans", "sans-serif"],
+            body: ["Public Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "Cascadia Mono", "monospace"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 17px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #D4D4D8;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #A1A1AA;
+    }
+  </style>
+</head>
+<body class="bg-app-chrome text-app-text font-body h-screen flex flex-col select-none overflow-hidden antialiased text-[13px]">
+<!-- Top Title / Window Chrome -->
+<header class="flex justify-between items-center w-full px-3 h-8 select-none bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 shrink-0 text-xs font-normal tracking-tight text-neutral-900 dark:text-neutral-100">
+<div class="flex items-center gap-3">
+<!-- Glyph + Product Name -->
+<div class="flex items-center gap-1.5">
+<div class="w-3.5 h-3.5 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[9px] font-bold tracking-tight">A</div>
+<span class="text-xs font-medium text-neutral-900 dark:text-neutral-100 tracking-wide">Antigravity Usage</span>
+</div>
+<div class="h-3 w-[1px] bg-neutral-300 mx-1"></div>
+<!-- Native Menus -->
+<nav class="flex items-center gap-3 text-neutral-600 font-normal">
+<button class="hover:text-neutral-950 transition-colors">Usage</button>
+<button class="hover:text-neutral-950 transition-colors">View</button>
+<button class="hover:text-neutral-950 transition-colors">Window</button>
+<button class="hover:text-neutral-950 transition-colors">Help</button>
+</nav>
+<span class="text-neutral-400 text-[11px] ml-2 font-mono">projects://workspace-root</span>
+</div>
+<!-- Window Controls -->
+<div class="flex items-center">
+<button class="w-8 h-8 flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 transition-colors duration-150 ease-in-out">
+<span class="material-symbols-outlined" data-icon="minimize">minimize</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 transition-colors duration-150 ease-in-out">
+<span class="material-symbols-outlined" data-icon="crop_square">crop_square</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center hover:bg-red-500 hover:text-white text-neutral-600 transition-colors duration-150 ease-in-out">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- Main View Area -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Side Navigation Bar -->
+<aside class="flex flex-col justify-between h-full p-3 w-64 select-none shrink-0 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 text-sm font-normal">
+<!-- Upper Section -->
+<div class="flex flex-col gap-4 overflow-y-auto custom-scroll pr-1">
+<!-- App Identity & Window History Nav -->
+<div class="flex items-center justify-between pb-1 pt-0.5">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded-md bg-neutral-950 text-white flex items-center justify-center font-bold text-xs shadow-sm">A</div>
+<div>
+<div class="font-headline text-base font-semibold text-neutral-950 dark:text-white tracking-tight leading-none">Antigravity</div>
+<div class="text-[11px] text-app-muted leading-tight font-mono">Usage v3</div>
+</div>
+</div>
+<div class="flex items-center gap-0.5 text-neutral-500">
+<button class="w-6 h-6 rounded hover:bg-neutral-200 flex items-center justify-center text-xs">
+<span class="material-symbols-outlined text-[15px]">arrow_back</span>
+</button>
+<button class="w-6 h-6 rounded hover:bg-neutral-200 flex items-center justify-center text-xs opacity-40">
+<span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+</button>
+<button class="w-6 h-6 rounded hover:bg-neutral-200 flex items-center justify-center text-xs">
+<span class="material-symbols-outlined text-[15px]">search</span>
+</button>
+</div>
+</div>
+<!-- CTA Rescan Sessions -->
+<button class="flex items-center justify-between w-full px-3 py-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-100 transition-all text-neutral-800 shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs font-medium">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-neutral-600 text-[14px]">refresh</span>
+            Rescan Sessions
+          </span>
+<span class="bg-neutral-100 text-neutral-600 text-[10px] font-mono px-1.5 py-0.5 rounded border border-neutral-200">20:25</span>
+</button>
+<!-- Main Nav Tabs -->
+<nav class="flex flex-col gap-0.5">
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="bar_chart">bar_chart</span>
+<span>Daily Usage</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="history">history</span>
+<span>Sessions &amp; Runs</span>
+</a>
+<!-- Projects: ACTIVE -->
+<a class="flex items-center gap-3 bg-white dark:bg-neutral-800 text-neutral-950 dark:text-white font-medium rounded-lg px-3 py-2 border border-neutral-200/80 dark:border-neutral-700/80 shadow-sm transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-neutral-900" data-icon="folder_open">folder_open</span>
+<span>Projects</span>
+<span class="ml-auto text-[11px] bg-neutral-100 text-neutral-700 font-mono font-medium px-1.5 py-0.2 rounded-full border border-neutral-200">5</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-950 dark:hover:text-white transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="pie_chart">pie_chart</span>
+<span>Models Breakdown</span>
+</a>
+</nav>
+<!-- Section: Sources -->
+<div class="pt-2 border-t border-neutral-200/70">
+<div class="text-[10px] font-semibold tracking-wider text-app-secondary uppercase px-3 pb-1">Sources</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center justify-between px-3 py-1.5 rounded-md hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold px-1 py-0.2 rounded bg-neutral-800 text-white leading-tight">APP</span>
+<span class="text-xs text-neutral-700">Antigravity App</span>
+</div>
+<span class="text-xs font-mono text-neutral-500">6</span>
+</div>
+<div class="flex items-center justify-between px-3 py-1.5 rounded-md hover:bg-neutral-100 cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold px-1 py-0.2 rounded bg-purple-700 text-white leading-tight">CLI</span>
+<span class="text-xs text-neutral-700">Antigravity CLI</span>
+</div>
+<span class="text-xs font-mono text-purple-700 font-medium">114</span>
+</div>
+</div>
+</div>
+<!-- Section: Recent Sessions -->
+<div class="pt-2 border-t border-neutral-200/70">
+<div class="text-[10px] font-semibold tracking-wider text-app-secondary uppercase px-3 pb-1">Recent Sessions</div>
+<div class="flex flex-col gap-1 text-xs">
+<div class="px-3 py-1 hover:bg-neutral-100 rounded cursor-pointer group">
+<div class="font-medium text-neutral-800 truncate group-hover:text-app-link">pricing-matrix-sync</div>
+<div class="text-[11px] text-app-time font-mono flex items-center justify-between">
+<span>14:12 · CLI</span>
+<span class="text-neutral-500">₹224</span>
+</div>
+</div>
+<div class="px-3 py-1 hover:bg-neutral-100 rounded cursor-pointer group">
+<div class="font-medium text-neutral-800 truncate group-hover:text-app-link">gemini-flash-adapter</div>
+<div class="text-[11px] text-app-time font-mono flex items-center justify-between">
+<span>19:04 · CLI</span>
+<span class="text-neutral-500">₹162</span>
+</div>
+</div>
+<div class="px-3 py-1 hover:bg-neutral-100 rounded cursor-pointer group">
+<div class="font-medium text-neutral-800 truncate group-hover:text-app-link">desktop-light-theme</div>
+<div class="text-[11px] text-app-time font-mono flex items-center justify-between">
+<span>20:47 · APP</span>
+<span class="text-neutral-500">₹94</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Docked Bottom Items -->
+<div class="pt-3 border-t border-neutral-200/80 flex flex-col gap-0.5">
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-all text-xs" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="terminal">terminal</span>
+<span>CLI Sync Terminal</span>
+</a>
+<a class="flex items-center gap-3 text-neutral-600 dark:text-neutral-400 rounded-lg px-3 py-2 font-normal hover:bg-neutral-100 hover:text-neutral-950 transition-all text-xs" href="#">
+<span class="material-symbols-outlined text-neutral-500" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas (Card within Chrome) -->
+<main class="flex-1 flex overflow-hidden p-2.5 pl-2 gap-2.5">
+<!-- Primary Projects Workspace Pane -->
+<section class="flex-1 bg-white rounded-xl border border-app-border flex flex-col overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<!-- Header & Breadcrumbs Toolbar -->
+<div class="px-5 py-3 border-b border-app-border flex items-center justify-between shrink-0 bg-white">
+<div class="flex items-center gap-2">
+<span class="text-app-muted text-xs font-medium">Projects</span>
+<span class="text-neutral-300">/</span>
+<h1 class="text-sm font-medium text-app-text">All Projects &amp; Workspaces</h1>
+<button class="text-neutral-400 hover:text-neutral-700 ml-1">
+<span class="material-symbols-outlined text-[15px]">info</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 text-xs font-medium border border-neutral-200 rounded-md hover:bg-neutral-50 text-neutral-700 flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Link Workspace</span>
+</button>
+<button class="p-1 text-neutral-500 hover:text-neutral-900 rounded hover:bg-neutral-100">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Body Content -->
+<div class="flex-1 overflow-y-auto custom-scroll p-6 flex flex-col gap-5">
+<!-- Pinned Composer Filter Bar (Google style pill) -->
+<div class="bg-white rounded-full border border-neutral-200 px-4 py-1.5 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.04)] text-xs text-neutral-700 shrink-0">
+<div class="flex items-center gap-2 overflow-x-auto">
+<button class="px-2.5 py-1 rounded-full hover:bg-neutral-100 font-medium flex items-center gap-1">
+<span>Last 30 days</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="px-2.5 py-1 rounded-full hover:bg-neutral-100 flex items-center gap-1">
+<span>All sources</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="px-2.5 py-1 rounded-full hover:bg-neutral-100 flex items-center gap-1">
+<span>All projects</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="px-2.5 py-1 rounded-full hover:bg-neutral-100 text-neutral-600 flex items-center gap-1">
+<span>≈ Gemini 3.8 Flash pricing</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+<span class="text-neutral-300">·</span>
+<button class="px-2.5 py-1 rounded-full hover:bg-neutral-100 font-mono text-neutral-800 flex items-center gap-1">
+<span>₹ INR</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
+</div>
+<div class="flex items-center gap-2 shrink-0 pl-3">
+<div class="flex items-center gap-1.5 text-[11px] text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+<span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse"></span>
+<span>Live Synced</span>
+</div>
+</div>
+</div>
+<!-- Summary Headline -->
+<div class="pt-1">
+<p class="text-2xl leading-relaxed text-app-text font-normal font-headline">
+<strong class="font-medium text-neutral-950">2 projects</strong> account for <strong class="font-medium text-neutral-950">78%</strong> of estimated cost. 
+              <span class="text-app-muted">4 sessions (≈ 3% of cost) aren't linked to a project.</span>
+</p>
+</div>
+<!-- Search & Filter Controls Row -->
+<div class="flex items-center justify-between gap-4 pt-1">
+<div class="relative w-80">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-[16px]">search</span>
+<input class="w-full text-xs bg-neutral-50 hover:bg-neutral-100/70 focus:bg-white border border-neutral-200 rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 transition-all font-body placeholder:text-neutral-400" placeholder="Search projects or paths..." type="text"/>
+</div>
+<!-- Segmented Control for Ranking -->
+<div class="flex items-center gap-2">
+<span class="text-xs text-app-secondary">Rank by:</span>
+<div class="flex items-center p-0.5 bg-neutral-100 rounded-lg border border-neutral-200 text-xs">
+<button class="bg-white text-neutral-950 font-medium px-3 py-1 rounded-md shadow-sm border border-neutral-200/80 transition-all">Cost</button>
+<button class="text-neutral-600 hover:text-neutral-900 px-3 py-1 transition-all">Tokens</button>
+<button class="text-neutral-600 hover:text-neutral-900 px-3 py-1 transition-all">Sessions</button>
+</div>
+</div>
+</div>
+<!-- Ranked List Card / Table -->
+<div class="bg-white rounded-xl border border-app-border overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-12 px-4 py-2.5 bg-app-subtle border-b border-app-border text-[11px] font-medium text-app-secondary uppercase tracking-wider">
+<div class="col-span-5">Project &amp; Local Path</div>
+<div class="col-span-3">Source Distribution</div>
+<div class="col-span-4 text-right">Sessions · Est. Cost · Tokens</div>
+</div>
+<!-- Table Rows -->
+<div class="divide-y divide-neutral-100 text-xs">
+<!-- Row 1: Selected (AntigravityUsageDashboard) -->
+<div class="grid grid-cols-12 px-4 py-3 bg-[#F5F5F7] border-l-4 border-l-purple-600 items-center transition-colors cursor-pointer">
+<div class="col-span-5 flex items-start gap-2.5 min-w-0 pr-2">
+<div class="w-7 h-7 rounded bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200">
+<span class="material-symbols-outlined text-[17px]">folder</span>
+</div>
+<div class="truncate">
+<div class="font-medium text-neutral-950 flex items-center gap-1.5">
+<span>AntigravityUsageDashboard</span>
+<span class="text-[10px] bg-purple-100 text-purple-800 font-mono px-1 rounded">ACTIVE</span>
+</div>
+<div class="font-mono text-[11px] text-neutral-500 truncate flex items-center gap-1 mt-0.5">
+<span class="bg-neutral-200/60 px-1 py-0.2 rounded text-slate-700">d:\Code\AntigravityUsageDashboard</span>
+</div>
+</div>
+</div>
+<div class="col-span-3 pr-4">
+<div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 mb-1">
+<span class="text-purple-700 font-medium">CLI 85%</span>
+<span class="text-neutral-700">APP 15%</span>
+</div>
+<!-- Split Distribution Bar -->
+<div class="h-2 w-full bg-neutral-200 rounded-full overflow-hidden flex">
+<div class="h-full bg-purple-600 rounded-l-full" style="width: 85%"></div>
+<div class="h-full bg-neutral-700 rounded-r-full" style="width: 15%"></div>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<div class="font-mono font-medium text-neutral-950 text-sm">≈ ₹2,410</div>
+<div class="text-[11px] text-app-muted font-mono mt-0.5">48 sessions · 154.2M tokens</div>
+</div>
+</div>
+<!-- Row 2: SLMRetraining -->
+<div class="grid grid-cols-12 px-4 py-3 hover:bg-neutral-50/80 items-center transition-colors cursor-pointer border-l-4 border-l-transparent">
+<div class="col-span-5 flex items-start gap-2.5 min-w-0 pr-2">
+<div class="w-7 h-7 rounded bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[17px]">folder</span>
+</div>
+<div class="truncate">
+<div class="font-medium text-neutral-900">SLMRetraining</div>
+<div class="font-mono text-[11px] text-neutral-500 truncate mt-0.5">
+<span class="bg-neutral-100 px-1 py-0.2 rounded text-slate-700">d:\Code\SLMRetraining</span>
+</div>
+</div>
+</div>
+<div class="col-span-3 pr-4">
+<div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 mb-1">
+<span class="text-purple-700">CLI 95%</span>
+<span>APP 5%</span>
+</div>
+<div class="h-2 w-full bg-neutral-200 rounded-full overflow-hidden flex">
+<div class="h-full bg-purple-600 rounded-l-full" style="width: 95%"></div>
+<div class="h-full bg-neutral-700 rounded-r-full" style="width: 5%"></div>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<div class="font-mono font-medium text-neutral-800 text-sm">≈ ₹1,260</div>
+<div class="text-[11px] text-app-muted font-mono mt-0.5">36 sessions · 84.1M tokens</div>
+</div>
+</div>
+<!-- Row 3: Learning -->
+<div class="grid grid-cols-12 px-4 py-3 hover:bg-neutral-50/80 items-center transition-colors cursor-pointer border-l-4 border-l-transparent">
+<div class="col-span-5 flex items-start gap-2.5 min-w-0 pr-2">
+<div class="w-7 h-7 rounded bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[17px]">folder</span>
+</div>
+<div class="truncate">
+<div class="font-medium text-neutral-900">Learning</div>
+<div class="font-mono text-[11px] text-neutral-500 truncate mt-0.5">
+<span class="bg-neutral-100 px-1 py-0.2 rounded text-slate-700">d:\Code\Learning</span>
+</div>
+</div>
+</div>
+<div class="col-span-3 pr-4">
+<div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 mb-1">
+<span class="text-purple-700">CLI 100%</span>
+<span>-</span>
+</div>
+<div class="h-2 w-full bg-neutral-200 rounded-full overflow-hidden flex">
+<div class="h-full bg-purple-600 rounded-full" style="width: 100%"></div>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<div class="font-mono font-medium text-neutral-800 text-sm">≈ ₹645</div>
+<div class="text-[11px] text-app-muted font-mono mt-0.5">24 sessions · 42.8M tokens</div>
+</div>
+</div>
+<!-- Row 4: AITherapist -->
+<div class="grid grid-cols-12 px-4 py-3 hover:bg-neutral-50/80 items-center transition-colors cursor-pointer border-l-4 border-l-transparent">
+<div class="col-span-5 flex items-start gap-2.5 min-w-0 pr-2">
+<div class="w-7 h-7 rounded bg-neutral-100 text-neutral-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[17px]">folder</span>
+</div>
+<div class="truncate">
+<div class="font-medium text-neutral-900">AITherapist</div>
+<div class="font-mono text-[11px] text-neutral-500 truncate mt-0.5">
+<span class="bg-neutral-100 px-1 py-0.2 rounded text-slate-700">d:\Code\AITherapist</span>
+</div>
+</div>
+</div>
+<div class="col-span-3 pr-4">
+<div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 mb-1">
+<span class="text-purple-700">CLI 70%</span>
+<span>APP 30%</span>
+</div>
+<div class="h-2 w-full bg-neutral-200 rounded-full overflow-hidden flex">
+<div class="h-full bg-purple-600 rounded-l-full" style="width: 70%"></div>
+<div class="h-full bg-neutral-700 rounded-r-full" style="width: 30%"></div>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<div class="font-mono font-medium text-neutral-800 text-sm">≈ ₹251</div>
+<div class="text-[11px] text-app-muted font-mono mt-0.5">8 sessions · 17.4M tokens</div>
+</div>
+</div>
+<!-- Row 5: Unattributed -->
+<div class="grid grid-cols-12 px-4 py-3 bg-neutral-50/50 hover:bg-neutral-100/60 items-center transition-colors cursor-pointer border-l-4 border-l-transparent">
+<div class="col-span-5 flex items-start gap-2.5 min-w-0 pr-2">
+<div class="w-7 h-7 rounded bg-neutral-200/70 text-neutral-400 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[17px]">folder_off</span>
+</div>
+<div class="truncate">
+<div class="font-medium text-app-muted flex items-center gap-1.5">
+<span>Unattributed</span>
+<span class="material-symbols-outlined text-[14px] text-neutral-400">help</span>
+</div>
+<div class="font-mono text-[11px] text-neutral-400 truncate mt-0.5">Sessions outside git/project scope</div>
+</div>
+</div>
+<div class="col-span-3 pr-4">
+<div class="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
+<span>Unmapped</span>
+<span>100%</span>
+</div>
+<div class="h-2 w-full bg-neutral-200 rounded-full overflow-hidden">
+<div class="h-full bg-neutral-300 rounded-full" style="width: 100%"></div>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<div class="font-mono font-medium text-neutral-500 text-sm">≈ ₹141</div>
+<div class="text-[11px] text-app-muted font-mono mt-0.5">4 sessions · 9.2M tokens</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Micro summary banner -->
+<div class="p-3 bg-neutral-50 rounded-xl border border-neutral-200 flex items-center justify-between text-xs text-neutral-600">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-purple-600 text-[18px]">verified</span>
+<span>All 5 project directories are indexed in the local SQLite engine cache.</span>
+</div>
+<button class="text-app-link font-medium hover:underline text-xs">Manage workspace scan rules →</button>
+</div>
+</div>
+</section>
+<!-- Right Side Detail Drawer / Panel (480px width) -->
+<aside class="w-[460px] bg-white rounded-xl border border-app-border flex flex-col shrink-0 overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+<!-- Header -->
+<div class="p-4 border-b border-app-border flex items-start justify-between bg-white shrink-0">
+<div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">
+<span class="material-symbols-outlined text-[16px]">folder</span>
+</div>
+<h2 class="text-base font-semibold text-neutral-900 tracking-tight">AntigravityUsageDashboard</h2>
+</div>
+<!-- Monospace Path Chip -->
+<div class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded bg-neutral-100 border border-neutral-200 text-[11px] font-mono text-slate-700 group cursor-pointer hover:bg-neutral-200/70 transition-colors">
+<span class="material-symbols-outlined text-[13px] text-neutral-500">folder_open</span>
+<span class="truncate max-w-[280px]">d:\Code\AntigravityUsageDashboard</span>
+<span class="material-symbols-outlined text-[13px] text-neutral-400 group-hover:text-neutral-800 ml-1">content_copy</span>
+</div>
+</div>
+<button class="p-1 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Body Details -->
+<div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+<!-- Summary sentence callout -->
+<div class="p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-xs leading-relaxed text-neutral-700">
+<strong class="font-medium text-neutral-950">48 sessions</strong> (42 CLI, 6 App) used <strong class="font-medium text-neutral-950">154.2M tokens</strong> (≈ ₹2,410). <span class="text-green-700 font-medium">89% cached</span>.
+          </div>
+<!-- Key Stats Mini-Grid (KPI Cards) -->
+<div class="grid grid-cols-2 gap-2 text-xs">
+<div class="p-3 rounded-lg border border-neutral-200 bg-white">
+<div class="flex items-center justify-between text-[11px] text-app-muted">
+<span>New Input</span>
+<span class="w-2 h-2 rounded-full bg-[#1967D2]"></span>
+</div>
+<div class="font-mono text-lg font-medium text-neutral-900 mt-1">14.8M</div>
+<div class="text-[10px] text-neutral-400 font-mono mt-0.5">Tokens billed full</div>
+</div>
+<div class="p-3 rounded-lg border border-neutral-200 bg-white">
+<div class="flex items-center justify-between text-[11px] text-app-muted">
+<span>Cached Input</span>
+<span class="w-2 h-2 rounded-full bg-[#AECBFA]"></span>
+</div>
+<div class="font-mono text-lg font-medium text-neutral-900 mt-1">137.2M</div>
+<div class="text-[10px] text-green-700 font-mono mt-0.5">89% cached savings</div>
+</div>
+<div class="p-3 rounded-lg border border-neutral-200 bg-white">
+<div class="flex items-center justify-between text-[11px] text-app-muted">
+<span>Output Tokens</span>
+<span class="w-2 h-2 rounded-full bg-[#E37400]"></span>
+</div>
+<div class="font-mono text-lg font-medium text-neutral-900 mt-1">2.2M</div>
+<div class="text-[10px] text-neutral-400 font-mono mt-0.5">Synthesis generation</div>
+</div>
+<div class="p-3 rounded-lg border border-neutral-200 bg-white">
+<div class="flex items-center justify-between text-[11px] text-app-muted">
+<span>Total Cost</span>
+<span class="text-neutral-400 font-mono">INR</span>
+</div>
+<div class="font-mono text-lg font-medium text-neutral-900 mt-1">≈ ₹2,410</div>
+<div class="text-[10px] text-purple-700 font-mono mt-0.5">CLI: ₹2,048 · App: ₹362</div>
+</div>
+</div>
+<!-- Daily Sparkline / Mini Trend Card -->
+<div class="p-3 rounded-lg border border-neutral-200 bg-white">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-medium text-neutral-800">Daily Token Volume</span>
+<span class="text-[11px] font-mono text-neutral-400">17 Oct – 15 Nov</span>
+</div>
+<!-- Compact Sparkline bars representation -->
+<div class="h-16 flex items-end gap-1 pt-2 px-1">
+<div class="flex-1 bg-purple-200 hover:bg-purple-500 rounded-t h-[20%] transition-colors" title="17 Oct: 1.2M"></div>
+<div class="flex-1 bg-purple-200 hover:bg-purple-500 rounded-t h-[35%] transition-colors" title="19 Oct: 2.8M"></div>
+<div class="flex-1 bg-purple-300 hover:bg-purple-500 rounded-t h-[60%] transition-colors" title="22 Oct: 5.4M"></div>
+<div class="flex-1 bg-purple-600 rounded-t h-[95%] transition-colors" title="24 Oct: 9.1M"></div>
+<div class="flex-1 bg-purple-300 hover:bg-purple-500 rounded-t h-[40%] transition-colors" title="27 Oct: 3.2M"></div>
+<div class="flex-1 bg-purple-200 hover:bg-purple-500 rounded-t h-[15%] transition-colors" title="30 Oct: 0.9M"></div>
+<div class="flex-1 bg-purple-300 hover:bg-purple-500 rounded-t h-[50%] transition-colors" title="02 Nov: 4.1M"></div>
+<div class="flex-1 bg-purple-400 hover:bg-purple-500 rounded-t h-[75%] transition-colors" title="06 Nov: 6.8M"></div>
+<div class="flex-1 bg-purple-300 hover:bg-purple-500 rounded-t h-[30%] transition-colors" title="09 Nov: 2.1M"></div>
+<div class="flex-1 bg-purple-500 hover:bg-purple-600 rounded-t h-[80%] transition-colors" title="12 Nov: 7.2M"></div>
+<div class="flex-1 bg-purple-600 rounded-t h-[100%] transition-colors" title="15 Nov: 9.8M"></div>
+</div>
+<div class="flex justify-between text-[10px] text-neutral-400 font-mono mt-1 px-1">
+<span>17 Oct</span>
+<span>Peak: 9.8M tokens/day</span>
+<span>15 Nov</span>
+</div>
+</div>
+<!-- Project Sessions Mini-Table -->
+<div class="border border-neutral-200 rounded-lg overflow-hidden bg-white">
+<div class="px-3 py-2 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
+<span class="text-xs font-medium text-neutral-800">Recent Sessions (48)</span>
+<button class="text-[11px] text-app-link font-medium hover:underline">Filter</button>
+</div>
+<div class="divide-y divide-neutral-100 text-xs">
+<!-- Session 1 -->
+<div class="p-2.5 hover:bg-neutral-50 flex items-center justify-between transition-colors">
+<div class="min-w-0 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="text-[9px] font-bold px-1 rounded bg-purple-700 text-white font-mono">CLI</span>
+<span class="font-medium text-neutral-900 truncate">Refactor pricing catalog</span>
+</div>
+<div class="text-[11px] text-app-time font-mono mt-0.5">24 Oct, 14:12 · 1h 12m</div>
+</div>
+<div class="text-right font-mono font-medium text-neutral-900 shrink-0">
+                  ≈ ₹224
+                </div>
+</div>
+<!-- Session 2 -->
+<div class="p-2.5 hover:bg-neutral-50 flex items-center justify-between transition-colors">
+<div class="min-w-0 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="text-[9px] font-bold px-1 rounded bg-purple-700 text-white font-mono">CLI</span>
+<span class="font-medium text-neutral-900 truncate">Fix transcript parser edge case</span>
+</div>
+<div class="text-[11px] text-app-time font-mono mt-0.5">23 Oct, 19:04 · 54m</div>
+</div>
+<div class="text-right font-mono font-medium text-neutral-900 shrink-0">
+                  ≈ ₹162
+                </div>
+</div>
+<!-- Session 3 -->
+<div class="p-2.5 hover:bg-neutral-50 flex items-center justify-between transition-colors">
+<div class="min-w-0 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="text-[9px] font-bold px-1 rounded bg-neutral-800 text-white font-mono">APP</span>
+<span class="font-medium text-neutral-900 truncate">Rust Windows App UI Design</span>
+</div>
+<div class="text-[11px] text-app-time font-mono mt-0.5">15 Nov, 20:47 · 38m</div>
+</div>
+<div class="text-right font-mono font-medium text-neutral-900 shrink-0">
+                  ≈ ₹94
+                </div>
+</div>
+<!-- Session 4 -->
+<div class="p-2.5 hover:bg-neutral-50 flex items-center justify-between transition-colors">
+<div class="min-w-0 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="text-[9px] font-bold px-1 rounded bg-purple-700 text-white font-mono">CLI</span>
+<span class="font-medium text-neutral-900 truncate">CLI Terminal Sync protocol</span>
+</div>
+<div class="text-[11px] text-app-time font-mono mt-0.5">18 Oct, 09:14 · 1h 05m</div>
+</div>
+<div class="text-right font-mono font-medium text-neutral-900 shrink-0">
+                  ≈ ₹186
+                </div>
+</div>
+<!-- Session 5 -->
+<div class="p-2.5 hover:bg-neutral-50 flex items-center justify-between transition-colors">
+<div class="min-w-0 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="text-[9px] font-bold px-1 rounded bg-purple-700 text-white font-mono">CLI</span>
+<span class="font-medium text-neutral-900 truncate">Add subagent orchestrator</span>
+</div>
+<div class="text-[11px] text-app-time font-mono mt-0.5">14 Oct, 11:20 · 25m</div>
+</div>
+<div class="text-right font-mono font-medium text-neutral-900 shrink-0">
+                  ≈ ₹74
+                </div>
+</div>
+</div>
+<!-- Footer Action inside drawer -->
+<a class="block p-2.5 text-center text-xs text-app-link font-medium bg-neutral-50/70 hover:bg-neutral-100 transition-colors border-t border-neutral-100" href="#">
+              View all 48 sessions in Runs →
+            </a>
+</div>
+</div>
+</aside>
+</main>
+</div>
+<!-- Bottom Window Status Bar -->
+<footer class="h-6 bg-app-chrome border-t border-app-border px-3 flex items-center justify-between text-[11px] font-mono text-neutral-500 shrink-0 select-none">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+<span>[ last scan 20:25 · 236 files · 120 with tokens · 0 warnings ]</span>
+</div>
+<div class="flex items-center gap-3">
+<span>UTC+5:30</span>
+<span class="text-neutral-300">|</span>
+<span>Light Theme</span>
+<span class="text-neutral-300">|</span>
+<span class="text-neutral-700 font-medium">Antigravity 2.0 Engine</span>
+</div>
+</footer>
+</body></html>

@@ -27,6 +27,7 @@ def test_fmt_pct():
 def test_colors_palette():
     dark = common.colors("dark")
     light = common.colors("light")
-    assert dark["bg"] == "#090A0F"
-    assert light["bg"] == "#F6F7F9"
-    assert "fresh" in dark and "cached" in dark and "cost" in dark
+    assert dark.keys() == light.keys()
+    for palette in (dark, light):
+        assert len({palette[key] for key in ("fresh", "cached", "output", "cost")}) == 4
+        assert palette["bg"] != palette["panel_solid"]

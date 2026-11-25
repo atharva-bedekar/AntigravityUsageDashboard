@@ -1,20 +1,20 @@
-<div id="catalog-drawer" class="drawer" style="width:640px;">
+<dialog id="catalog-drawer" class="drawer drawer-wide" aria-labelledby="catalog-drawer-title">
   <div class="drawer-header">
-    <div style="font-family:var(--font-display); font-weight:700;">PRICE CATALOG REFERENCE</div>
-    <button type="button" class="btn" onclick="closeDrawers()">✕</button>
+    <h2 id="catalog-drawer-title">Price catalog</h2>
+    <button type="button" class="btn btn-quiet" onclick="closeDrawers()" autofocus>Close</button>
   </div>
   <div class="drawer-body">
     <div class="table-container">
       <table class="data-table">
-        <thead><tr><th>Model ID</th><th>Vendor</th><th>Input / Mtok</th><th>Cached / Mtok</th><th>Output / Mtok</th><th>Effective</th></tr></thead>
+        <thead><tr><th>Model ID</th><th>Vendor</th><th class="num">Input / Mtok</th><th class="num">Cached / Mtok</th><th class="num">Output / Mtok</th><th>Effective</th></tr></thead>
         <tbody>
           {% for e in ctx.catalog.entries %}
             <tr>
               <td class="mono cell-truncate" title="{{ e.model_id }}"><b>{{ e.model_id }}</b></td>
               <td>{{ e.vendor }}</td>
-              <td class="mono">${{ "%.4f"|format(e.input_usd) }}</td>
-              <td class="mono">${{ "%.4f"|format(e.cached_usd) }}</td>
-              <td class="mono">${{ "%.4f"|format(e.output_usd) }}</td>
+              <td class="num">${{ "%.4f"|format(e.input_usd) }}</td>
+              <td class="num">${{ "%.4f"|format(e.cached_usd) }}</td>
+              <td class="num">${{ "%.4f"|format(e.output_usd) }}</td>
               <td class="mono">{{ e.effective_from }}</td>
             </tr>
           {% endfor %}
@@ -22,4 +22,4 @@
       </table>
     </div>
   </div>
-</div>
+</dialog>
